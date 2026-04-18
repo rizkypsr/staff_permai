@@ -112,7 +112,7 @@ const copyToClipboard = (text) => {
 
         <!-- Bottom Button -->
         <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
-            <Button type="default" block round size="large" @click="handlePengembalian">
+            <Button type="primary" block round size="large" @click="handlePengembalian">
                 Pengembalian
             </Button>
         </div>
@@ -129,9 +129,8 @@ const copyToClipboard = (text) => {
     color: #ff6b35;
 }
 
-:deep(.van-button--default) {
-    background-color: #1f2937;
-    border-color: #1f2937;
-    color: #ffffff;
+:deep(.van-button--primary) {
+    background-color: #fec109;
+    border-color: #fec109;
 }
 </style>

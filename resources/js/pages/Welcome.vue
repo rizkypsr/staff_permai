@@ -43,9 +43,17 @@ const status = computed(() => props.todayAbsensi?.status_text || 'BELUM ABSEN')
 const handleAbsen = async () => {
     if (!props.canAbsen) {
         if (props.todayAbsensi) {
-            showToast('Anda sudah absen hari ini')
+            showToast({
+                message: 'Anda sudah absen hari ini',
+                type: 'fail',
+                wordBreak: 'break-word',
+            })
         } else {
-            showToast('Absen hanya bisa dilakukan mulai jam 06:00')
+            showToast({
+                message: 'Absen hanya bisa dilakukan mulai jam 06:00',
+                type: 'fail',
+                wordBreak: 'break-word',
+            })
         }
         return
     }
@@ -63,12 +71,14 @@ const handleAbsen = async () => {
                 showToast({
                     message: 'Absen berhasil dicatat',
                     type: 'success',
+                    wordBreak: 'break-word',
                 })
             },
             onError: (errors) => {
                 showToast({
                     message: errors.error || 'Terjadi kesalahan',
                     type: 'fail',
+                    wordBreak: 'break-word',
                 })
             },
         })
@@ -114,15 +124,9 @@ const handleAbsen = async () => {
                     </div>
 
                     <!-- Absen Button -->
-                    <Button
-                        type="default"
-                        block
-                        round
-                        size="large"
-                        :disabled="!canAbsen"
+                    <Button type="default" block round size="large" :disabled="!canAbsen"
                         class="!bg-black !text-white !border-black !h-12 !text-lg !font-bold disabled:!bg-gray-400 disabled:!border-gray-400"
-                        @click="handleAbsen"
-                    >
+                        @click="handleAbsen">
                         {{ canAbsen ? 'Absen' : (todayAbsensi ? 'Sudah Absen' : 'Belum Waktunya') }}
                     </Button>
                 </div>
@@ -131,25 +135,13 @@ const handleAbsen = async () => {
 
         <!-- Tabs for months -->
         <div class="bg-white">
-            <Tabs
-                v-model:active="activeTab"
-                color="#fec109"
-                title-active-color="#fec109"
-                title-inactive-color="#969799"
-            >
-                <Tab
-                    v-for="(monthData, index) in absensiData"
-                    :key="index"
-                    :title="monthData.month"
-                >
+            <Tabs v-model:active="activeTab" color="#fec109" title-active-color="#fec109"
+                title-inactive-color="#969799">
+                <Tab v-for="(monthData, index) in absensiData" :key="index" :title="monthData.month">
                     <div v-if="monthData.data.length > 0" class="p-4">
                         <CellGroup inset>
-                            <Cell
-                                v-for="absen in monthData.data"
-                                :key="absen.id"
-                                :title="absen.tgl_formatted"
-                                :label="`Masuk: ${absen.masuk || '-'} | Keluar: ${absen.keluar || '-'}`"
-                            >
+                            <Cell v-for="absen in monthData.data" :key="absen.id" :title="absen.tgl_formatted"
+                                :label="`Masuk: ${absen.masuk || '-'} | Keluar: ${absen.keluar || '-'}`">
                                 <template #value>
                                     <div class="text-xs" :class="{
                                         'text-orange-600': absen.status === 0,

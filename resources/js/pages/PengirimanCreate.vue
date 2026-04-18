@@ -180,7 +180,7 @@ const handleNext = () => {
 const handleSubmit = () => {
     // Validate: minimal 1 produk nota dengan qty_kirim > 0
     const produkNota = produkNotaList.value.filter(item => item.qty_kirim > 0)
-    
+
     if (produkNota.length === 0) {
         showToast({
             message: 'Minimal 1 produk nota harus memiliki qty kirim > 0',
@@ -380,7 +380,8 @@ console.log(props.latestFaktur);
                             <span class="text-sm">{{ person.nama }}</span>
                         </template>
                         <template #right-icon>
-                            <Checkbox :model-value="isPersonSelected(person.id)" @click.stop="togglePerson(person.id)" />
+                            <Checkbox :model-value="isPersonSelected(person.id)"
+                                @click.stop="togglePerson(person.id)" />
                         </template>
                     </Cell>
                 </CellGroup>
@@ -398,7 +399,8 @@ console.log(props.latestFaktur);
                 <Button v-if="showBackButton" block round @click="handlePrev">
                     Kembali
                 </Button>
-                <Button type="primary" block round @click="handleNext" :disabled="isNextButtonDisabled" :loading="form.processing" loading-type="spinner">
+                <Button type="primary" block round @click="handleNext" :disabled="isNextButtonDisabled"
+                    :loading="form.processing" loading-type="spinner">
                     {{ buttonText }}
                 </Button>
             </div>
@@ -409,11 +411,13 @@ console.log(props.latestFaktur);
                 title="Pilih Tanggal" @confirm="onConfirmDate" @cancel="onCancelDate" />
         </Popup>
 
-        <Popup :show="showFakturPicker" position="center" round :style="{ width: '90%' }" @click-overlay="onCancelFaktur">
+        <Popup :show="showFakturPicker" position="center" round :style="{ width: '90%' }"
+            @click-overlay="onCancelFaktur">
             <Picker :columns="fakturColumns" @confirm="onConfirmFaktur" @cancel="onCancelFaktur" />
         </Popup>
 
-        <Popup :show="showPipaPicker" position="center" round :style="{ width: '90%', height: '70%' }" @click-overlay="onCancelPipa">
+        <Popup :show="showPipaPicker" position="center" round :style="{ width: '90%', height: '70%' }"
+            @click-overlay="onCancelPipa">
             <div class="flex flex-col h-full">
                 <!-- Header -->
                 <div class="flex items-center justify-between p-4">
