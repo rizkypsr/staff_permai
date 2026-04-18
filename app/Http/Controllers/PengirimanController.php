@@ -27,37 +27,56 @@ class PengirimanController extends Controller
             ->where('row_status', 1)
             ->pluck('id_pengiriman');
 
-        // Get pengiriman data - only approved (is_approve = 1)
-        $pengiriman = Pengiriman::whereIn('id', $pengirimanIds)
+        // Build query for pengiriman data - only approved (is_approve = 1)
+        $pengirimanQuery = Pengiriman::whereIn('id', $pengirimanIds)
             ->where('status', 1)
             ->where('row_status', 1)
             ->where('is_approve', 1) // Only show approved pengiriman
             ->with(['pelanggan', 'persons.pengguna'])
-            ->orderBy('tgl', 'desc')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'no_transaksi' => $item->no_transaksi,
-                    'tgl' => $item->tgl->format('Y-m-d'),
-                    'tgl_formatted' => $item->tgl->translatedFormat('d F Y'),
-                    'pelanggan' => $item->pelanggan ? $item->pelanggan->nama : '-',
-                    'alamat' => $item->alamat,
-                    'status' => $item->status,
-                    'status_text' => $this->getStatusText($item->status),
-                    'is_approve' => $item->is_approve,
-                    'qty_pesan' => $item->qty_pesan,
-                    'qty_nota' => $item->qty_nota,
-                    'persons' => $item->persons->map(function ($person) {
-                        return [
-                            'nama' => $person->pengguna->nama,
-                        ];
-                    }),
-                ];
+            ->orderBy('tgl', 'desc');
+
+        // Apply search if provided
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $pengirimanQuery->where(function ($query) use ($search) {
+                $query->where('no_transaksi', 'like', "%{$search}%")
+                    ->orWhereHas('pelanggan', function ($q) use ($search) {
+                        $q->where('nama', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('persons.pengguna', function ($q) use ($search) {
+                        $q->where('nama', 'like', "%{$search}%");
+                    });
             });
+        }
+
+        // Paginate the results
+        $pengirimanPaginated = $pengirimanQuery->paginate(10);
+
+        // Transform the data
+        $pengirimanPaginated->getCollection()->transform(function ($item) {
+            return [
+                'id' => $item->id,
+                'no_transaksi' => $item->no_transaksi,
+                'tgl' => $item->tgl->format('Y-m-d'),
+                'tgl_formatted' => $item->tgl->translatedFormat('d F Y'),
+                'pelanggan' => $item->pelanggan ? $item->pelanggan->nama : '-',
+                'alamat' => $item->alamat,
+                'status' => $item->status,
+                'status_text' => $this->getStatusText($item->status),
+                'is_approve' => $item->is_approve,
+                'qty_pesan' => $item->qty_pesan,
+                'qty_nota' => $item->qty_nota,
+                'persons' => $item->persons->map(function ($person) {
+                    return [
+                        'nama' => $person->pengguna->nama,
+                    ];
+                }),
+            ];
+        });
 
         return Inertia::render('Pengiriman', [
-            'pengiriman' => $pengiriman,
+            'pengiriman' => Inertia::scroll(fn () => $pengirimanPaginated),
+            'search' => $request->search ?? '',
         ]);
     }
 

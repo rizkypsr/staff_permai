@@ -21,4 +21,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/pengiriman/faktur/{id}/produk-nota', [PengirimanController::class, 'getProdukNota'])->name('pengiriman.faktur.produk-nota');
     Route::post('/pengiriman', [PengirimanController::class, 'store'])->name('pengiriman.store');
     Route::inertia('/stok', 'Stok')->name('stok');
+    Route::inertia('/settings', 'Settings')->name('settings');
 });

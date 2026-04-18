@@ -9,3 +9,52 @@
         'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
         'Noto Color Emoji';
 }
+
+/* Font scaling system - only affects font sizes, not container dimensions */
+:root {
+    --font-scale: 1;
+}
+
+/* Apply font scaling to text elements only */
+.font-scaling-enabled {
+    /* Target specific text elements to avoid affecting layout containers */
+}
+
+.font-scaling-enabled h1,
+.font-scaling-enabled h2,
+.font-scaling-enabled h3,
+.font-scaling-enabled h4,
+.font-scaling-enabled h5,
+.font-scaling-enabled h6,
+.font-scaling-enabled p,
+.font-scaling-enabled span,
+.font-scaling-enabled div:not([class*="w-"]):not([class*="h-"]):not([class*="flex"]):not([class*="grid"]):not(.font-scaling-ignore),
+.font-scaling-enabled button,
+.font-scaling-enabled input,
+.font-scaling-enabled textarea,
+.font-scaling-enabled label,
+.font-scaling-enabled .van-nav-bar__title,
+.font-scaling-enabled .van-cell__title,
+.font-scaling-enabled .van-cell__value,
+.font-scaling-enabled .van-cell__label,
+.font-scaling-enabled .van-field__label,
+.font-scaling-enabled .van-field__control,
+.font-scaling-enabled .van-button__text,
+.font-scaling-enabled .van-tabbar-item__text,
+.font-scaling-enabled .van-tab__text,
+.font-scaling-enabled .text-xs:not(.font-scaling-ignore),
+.font-scaling-enabled .text-sm:not(.font-scaling-ignore),
+.font-scaling-enabled .text-base:not(.font-scaling-ignore),
+.font-scaling-enabled .text-lg:not(.font-scaling-ignore),
+.font-scaling-enabled .text-xl:not(.font-scaling-ignore),
+.font-scaling-enabled .text-2xl:not(.font-scaling-ignore),
+.font-scaling-enabled .text-3xl:not(.font-scaling-ignore),
+.font-scaling-enabled .text-4xl:not(.font-scaling-ignore),
+.font-scaling-enabled .text-5xl:not(.font-scaling-ignore) {
+    font-size: calc(1em * var(--font-scale)) !important;
+}
+
+/* Ensure font-scaling-ignore elements keep their original size */
+.font-scaling-enabled .font-scaling-ignore {
+    font-size: inherit !important;
+}

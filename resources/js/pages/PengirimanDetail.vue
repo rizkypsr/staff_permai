@@ -110,7 +110,7 @@ const copyToClipboard = (text) => {
             </div>
         </div>
 
-        <!-- Bottom Button -->
+        <!-- Bottom Button - Fixed at bottom like tabbar -->
         <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
             <Button type="primary" block round size="large" @click="handlePengembalian">
                 Pengembalian

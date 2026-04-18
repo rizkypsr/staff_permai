@@ -18,17 +18,18 @@ const getCurrentRoute = () => {
     return 'absensi'
 }
 
-// Check if tabbar should be shown - use ref to avoid hydration mismatch
-const shouldShowTabbar = ref(true)
-
+// Initialize with server-safe defaults
+const shouldShowTabbar = ref(false)
 const active = ref('absensi')
 
 onMounted(() => {
-    active.value = getCurrentRoute()
-    
-    // Update shouldShowTabbar after mount to avoid hydration mismatch
-    const path = window.location.pathname
-    shouldShowTabbar.value = path === '/' || path === '/pengiriman' || path === '/stok'
+    // Only access window after component is mounted
+    if (typeof window !== 'undefined') {
+        active.value = getCurrentRoute()
+        
+        const path = window.location.pathname
+        shouldShowTabbar.value = path === '/' || path === '/pengiriman' || path === '/stok'
+    }
 })
 
 const onChange = (name) => {
@@ -43,16 +44,16 @@ const onChange = (name) => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-gray-50 flex justify-center">
+    <div class="h-dvh bg-gray-50 flex justify-center overflow-hidden">
         <!-- Mobile-first container with max-width for desktop -->
-        <div class="w-full max-w-md bg-white min-h-screen shadow-lg relative">
-            <!-- Main Content with conditional padding for tabbar -->
-            <div :class="shouldShowTabbar ? 'pb-[50px]' : ''">
+        <div class="w-full max-w-md bg-white h-full shadow-lg relative flex flex-col">
+            <!-- Main Content - scrollable -->
+            <div class="flex-1 overflow-y-auto">
                 <slot />
             </div>
 
             <!-- Bottom Tabbar - only show on main pages -->
-            <div v-if="shouldShowTabbar" class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+            <div v-if="shouldShowTabbar" class="flex-shrink-0 bg-white border-t border-gray-200">
                 <Tabbar
                     v-model="active"
                     active-color="#fec109"
@@ -74,3 +75,20 @@ const onChange = (name) => {
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Increase tabbar font and icon size */
+:deep(.van-tabbar-item__text) {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+:deep(.van-tabbar-item__icon) {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+:deep(.van-tabbar-item) {
+    padding: 8px 0;
+}
+</style>

@@ -1,11 +1,10 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3'
-import { Field, CellGroup, Button, Checkbox } from 'vant'
+import { Field, CellGroup, Button } from 'vant'
 
 const form = useForm({
     login: '',
     password: '',
-    remember: false
 })
 
 const submit = () => {
@@ -43,10 +42,6 @@ const submit = () => {
                             required
                         />
                     </CellGroup>
-
-                    <div class="mt-4 px-2">
-                        <Checkbox v-model="form.remember" shape="square">Ingat saya</Checkbox>
-                    </div>
 
                     <div class="mt-6">
                         <Button

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { NavBar, Icon, Button, Tab, Tabs, Cell, CellGroup, Empty, showToast, showConfirmDialog } from 'vant'
+import { NavBar, Icon, Button, Tab, Tabs, Cell, CellGroup, Empty, showToast, showConfirmDialog, Popover } from 'vant'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 const props = defineProps({
@@ -11,7 +11,7 @@ const props = defineProps({
     canAbsen: Boolean,
 })
 
-// Current time
+// Current time - initialize with server-safe value
 const currentTime = ref(new Date())
 const currentDate = computed(() => {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
@@ -22,19 +22,30 @@ const currentTimeString = computed(() => {
 })
 
 // Update time every second
-let timeInterval
+let timeInterval = null
 onMounted(() => {
+    // Only start interval after component is mounted
     timeInterval = setInterval(() => {
         currentTime.value = new Date()
     }, 1000)
 })
 
 onUnmounted(() => {
-    if (timeInterval) clearInterval(timeInterval)
+    if (timeInterval) {
+        clearInterval(timeInterval)
+        timeInterval = null
+    }
 })
 
 // Tabs - set active to last tab (current month)
 const activeTab = ref(props.absensiData.length - 1)
+
+// Popover menu
+const showPopover = ref(false)
+const menuActions = [
+    { text: 'Pengaturan', icon: 'setting-o' },
+    { text: 'Logout', icon: 'sign' },
+]
 
 // Today's data
 const jamMasuk = computed(() => props.todayAbsensi?.masuk || '-')
@@ -86,6 +97,39 @@ const handleAbsen = async () => {
         // User cancelled
     }
 }
+
+const handleMenuClick = (action) => {
+    showPopover.value = false
+
+    if (action.text === 'Pengaturan') {
+        router.visit('/settings')
+    } else if (action.text === 'Logout') {
+        handleLogout()
+    }
+}
+
+const handleLogout = async () => {
+    try {
+        await showConfirmDialog({
+            title: 'Konfirmasi Logout',
+            message: 'Apakah Anda yakin ingin keluar?',
+            confirmButtonText: 'Ya, Keluar',
+            cancelButtonText: 'Batal',
+        })
+
+        router.post('/logout', {}, {
+            onSuccess: () => {
+                showToast({
+                    message: 'Berhasil logout',
+                    type: 'success',
+                    wordBreak: 'break-word',
+                })
+            },
+        })
+    } catch (error) {
+        // User cancelled
+    }
+}
 </script>
 
 <template>
@@ -95,16 +139,21 @@ const handleAbsen = async () => {
             <!-- Navbar -->
             <NavBar title="MPE APP" class="!bg-transparent">
                 <template #right>
-                    <Icon name="wap-nav" size="24" color="white" />
+                    <Popover v-model:show="showPopover" :actions="menuActions" placement="bottom-end"
+                        @select="handleMenuClick">
+                        <template #reference>
+                            <Icon name="wap-nav" size="24" color="white" />
+                        </template>
+                    </Popover>
                 </template>
             </NavBar>
 
             <!-- Time Display -->
             <div class="text-center py-8 px-4">
-                <div class="text-5xl font-bold mb-2">
+                <div class="font-bold mb-2" style="font-size: 4rem !important; line-height: 1 !important;">
                     {{ currentTimeString }}
                 </div>
-                <div class="text-lg opacity-90">
+                <div class="opacity-90" style="font-size: 1.25rem !important;">
                     {{ currentDate }}
                 </div>
             </div>
@@ -138,10 +187,10 @@ const handleAbsen = async () => {
             <Tabs v-model:active="activeTab" color="#fec109" title-active-color="#fec109"
                 title-inactive-color="#969799">
                 <Tab v-for="(monthData, index) in absensiData" :key="index" :title="monthData.month">
-                    <div v-if="monthData.data.length > 0" class="p-4">
+                    <div v-if="monthData.data.length > 0">
                         <CellGroup inset>
                             <Cell v-for="absen in monthData.data" :key="absen.id" :title="absen.tgl_formatted"
-                                :label="`Masuk: ${absen.masuk || '-'} | Keluar: ${absen.keluar || '-'}`">
+                                :label="`Masuk: ${absen.masuk || '-'}`">
                                 <template #value>
                                     <div class="text-xs" :class="{
                                         'text-orange-600': absen.status === 0,

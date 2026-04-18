@@ -281,9 +281,6 @@ const isNextButtonDisabled = computed(() => {
     }
     return false
 })
-
-console.log(props.latestFaktur);
-
 </script>
 
 <template>
@@ -393,13 +390,13 @@ console.log(props.latestFaktur);
             </div>
         </div>
 
-        <!-- Bottom Actions - inside AppLayout container -->
+        <!-- Bottom Actions - Fixed at bottom like tabbar -->
         <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
             <div class="flex gap-3">
-                <Button v-if="showBackButton" block round @click="handlePrev">
+                <Button v-if="showBackButton" block round size="large" @click="handlePrev">
                     Kembali
                 </Button>
-                <Button type="primary" block round @click="handleNext" :disabled="isNextButtonDisabled"
+                <Button type="primary" block round size="large" @click="handleNext" :disabled="isNextButtonDisabled"
                     :loading="form.processing" loading-type="spinner">
                     {{ buttonText }}
                 </Button>
@@ -463,5 +460,73 @@ console.log(props.latestFaktur);
 :deep(.van-button--primary) {
     background-color: #fec109;
     border-color: #fec109;
+}
+
+/* Increase font sizes throughout the form */
+:deep(.van-field__label) {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+:deep(.van-field__value) {
+    font-size: 15px;
+}
+
+:deep(.van-field__control) {
+    font-size: 15px;
+}
+
+:deep(.van-cell__title) {
+    font-size: 15px;
+}
+
+:deep(.van-cell__value) {
+    font-size: 15px;
+}
+
+/* Steps component */
+:deep(.van-step__title) {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Product cards text */
+.text-sm {
+    font-size: 15px !important;
+}
+
+.text-xs {
+    font-size: 13px !important;
+}
+
+/* Button text */
+:deep(.van-button__text) {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Stepper text */
+:deep(.van-stepper__input) {
+    font-size: 15px;
+}
+
+/* Picker and popup text */
+:deep(.van-picker__column-item) {
+    font-size: 15px;
+}
+
+:deep(.van-picker__title) {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Search input */
+:deep(.van-search__content) {
+    font-size: 15px;
+}
+
+/* Checkbox text */
+:deep(.van-checkbox__label) {
+    font-size: 15px;
 }
 </style>
