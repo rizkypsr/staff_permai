@@ -1,0 +1,197 @@
+<script setup>
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { NavBar, Icon, Button, Tab, Tabs, Cell, CellGroup, Empty, showToast, showConfirmDialog } from 'vant'
+import AppLayout from '@/layouts/AppLayout.vue'
+
+const props = defineProps({
+    auth: Object,
+    absensiData: Array,
+    todayAbsensi: Object,
+    canAbsen: Boolean,
+})
+
+// Current time
+const currentTime = ref(new Date())
+const currentDate = computed(() => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+    return currentTime.value.toLocaleDateString('id-ID', options)
+})
+const currentTimeString = computed(() => {
+    return currentTime.value.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+})
+
+// Update time every second
+let timeInterval
+onMounted(() => {
+    timeInterval = setInterval(() => {
+        currentTime.value = new Date()
+    }, 1000)
+})
+
+onUnmounted(() => {
+    if (timeInterval) clearInterval(timeInterval)
+})
+
+// Tabs - set active to last tab (current month)
+const activeTab = ref(props.absensiData.length - 1)
+
+// Today's data
+const jamMasuk = computed(() => props.todayAbsensi?.masuk || '-')
+const status = computed(() => props.todayAbsensi?.status_text || 'BELUM ABSEN')
+
+const handleAbsen = async () => {
+    if (!props.canAbsen) {
+        if (props.todayAbsensi) {
+            showToast('Anda sudah absen hari ini')
+        } else {
+            showToast('Absen hanya bisa dilakukan mulai jam 06:00')
+        }
+        return
+    }
+
+    try {
+        await showConfirmDialog({
+            title: 'Konfirmasi Absen',
+            message: 'Apakah Anda yakin ingin melakukan absen sekarang?',
+            confirmButtonText: 'Ya, Absen',
+            cancelButtonText: 'Batal',
+        })
+
+        router.post('/absensi', {}, {
+            onSuccess: () => {
+                showToast({
+                    message: 'Absen berhasil dicatat',
+                    type: 'success',
+                })
+            },
+            onError: (errors) => {
+                showToast({
+                    message: errors.error || 'Terjadi kesalahan',
+                    type: 'fail',
+                })
+            },
+        })
+    } catch (error) {
+        // User cancelled
+    }
+}
+</script>
+
+<template>
+    <AppLayout>
+        <!-- Header with orange background -->
+        <div class="bg-[#ff6b35] text-white">
+            <!-- Navbar -->
+            <NavBar title="MPE APP" class="!bg-transparent">
+                <template #right>
+                    <Icon name="wap-nav" size="24" color="white" />
+                </template>
+            </NavBar>
+
+            <!-- Time Display -->
+            <div class="text-center py-8 px-4">
+                <div class="text-5xl font-bold mb-2">
+                    {{ currentTimeString }}
+                </div>
+                <div class="text-lg opacity-90">
+                    {{ currentDate }}
+                </div>
+            </div>
+
+            <!-- Status Card -->
+            <div class="px-4 pb-6">
+                <div class="bg-white rounded-2xl p-6 text-gray-900">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <div class="text-lg font-bold mb-1">Jam Masuk</div>
+                            <div class="text-2xl font-bold">{{ jamMasuk }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-lg font-bold mb-1">Status</div>
+                            <div class="text-sm font-semibold">{{ status }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Absen Button -->
+                    <Button
+                        type="default"
+                        block
+                        round
+                        size="large"
+                        :disabled="!canAbsen"
+                        class="!bg-black !text-white !border-black !h-12 !text-lg !font-bold disabled:!bg-gray-400 disabled:!border-gray-400"
+                        @click="handleAbsen"
+                    >
+                        {{ canAbsen ? 'Absen' : (todayAbsensi ? 'Sudah Absen' : 'Belum Waktunya') }}
+                    </Button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs for months -->
+        <div class="bg-white">
+            <Tabs
+                v-model:active="activeTab"
+                color="#fec109"
+                title-active-color="#fec109"
+                title-inactive-color="#969799"
+            >
+                <Tab
+                    v-for="(monthData, index) in absensiData"
+                    :key="index"
+                    :title="monthData.month"
+                >
+                    <div v-if="monthData.data.length > 0" class="p-4">
+                        <CellGroup inset>
+                            <Cell
+                                v-for="absen in monthData.data"
+                                :key="absen.id"
+                                :title="absen.tgl_formatted"
+                                :label="`Masuk: ${absen.masuk || '-'} | Keluar: ${absen.keluar || '-'}`"
+                            >
+                                <template #value>
+                                    <div class="text-xs" :class="{
+                                        'text-orange-600': absen.status === 0,
+                                        'text-green-600': absen.status === 1,
+                                        'text-yellow-600': absen.status === 2,
+                                        'text-red-600': absen.status === 3,
+                                    }">
+                                        {{ absen.status_text }}
+                                    </div>
+                                </template>
+                            </Cell>
+                        </CellGroup>
+                    </div>
+                    <div v-else class="p-4">
+                        <Empty :description="`Tidak ada data absensi untuk ${monthData.month}`" />
+                    </div>
+                </Tab>
+            </Tabs>
+        </div>
+    </AppLayout>
+</template>
+
+<style scoped>
+:deep(.van-nav-bar) {
+    background-color: transparent;
+}
+
+:deep(.van-nav-bar__title) {
+    color: white;
+    font-weight: 700;
+    font-size: 20px;
+}
+
+:deep(.van-tabs__nav) {
+    background-color: white;
+}
+
+:deep(.van-tab) {
+    font-weight: 500;
+}
+
+:deep(.van-tab--active) {
+    font-weight: 600;
+}
+</style>
