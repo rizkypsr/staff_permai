@@ -10,8 +10,27 @@ const props = defineProps({
 })
 
 const handlePengembalian = () => {
-    router.visit('/pengembalian/create')
+    if (props.pengiriman.pengambilan_pipa === 0) {
+        // Bisa buat pengambilan baru
+        router.visit('/pengembalian/create')
+    } else if (props.pengiriman.pengambilan_pipa > 0) {
+        // Sudah ada pengambilan, buka detail
+        router.visit(`/pengembalian/${props.pengiriman.pengambilan_pipa}`)
+    }
 }
+
+const showPengambilanButton = computed(() => {
+    return props.pengiriman.pengambilan_pipa !== null
+})
+
+const pengambilanButtonText = computed(() => {
+    if (props.pengiriman.pengambilan_pipa === 0) {
+        return 'Pengembalian'
+    } else if (props.pengiriman.pengambilan_pipa > 0) {
+        return 'Lihat Pengembalian'
+    }
+    return ''
+})
 
 const copyToClipboard = (text) => {
     // Check if clipboard API is available
@@ -62,11 +81,14 @@ const copyToClipboard = (text) => {
 
 <template>
     <AppLayout>
-        <div class="sticky top-0 z-10 bg-white">
-            <NavBar :title="pengiriman.no_transaksi" left-arrow @click-left="$inertia.visit('/pengiriman')" />
-        </div>
+        <div class="h-dvh flex flex-col bg-gray-50">
+            <div class="sticky top-0 z-10 bg-white flex-shrink-0">
+                <NavBar :title="pengiriman.no_transaksi" left-arrow @click-left="$inertia.visit('/pengiriman')" />
+            </div>
 
-        <div :class="pengiriman.can_return ? 'pb-24' : 'pb-4'" class="bg-gray-50">
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto">
+                <div :class="showPengambilanButton ? 'pb-24' : 'pb-4'">
             <!-- Info Section -->
             <div class="bg-white p-4 mb-3">
                 <div class="flex justify-between items-start mb-2">
@@ -159,13 +181,15 @@ const copyToClipboard = (text) => {
                     Tidak ada produk pipa
                 </div>
             </div>
-        </div>
+                </div>
+            </div>
 
-        <!-- Bottom Button - Fixed at bottom like tabbar -->
-        <div v-if="pengiriman.can_return" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
-            <Button type="primary" block round size="large" @click="handlePengembalian">
-                Pengembalian
-            </Button>
+            <!-- Bottom Button - Fixed at bottom like tabbar -->
+            <div v-if="showPengambilanButton" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4 flex-shrink-0">
+                <Button type="primary" block round size="large" @click="handlePengembalian">
+                    {{ pengambilanButtonText }}
+                </Button>
+            </div>
         </div>
     </AppLayout>
 </template>

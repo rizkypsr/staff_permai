@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pengiriman/faktur/{id}/produk-nota', [PengirimanController::class, 'getProdukNota'])->name('pengiriman.faktur.produk-nota');
     Route::post('/pengiriman', [PengirimanController::class, 'store'])->name('pengiriman.store');
     Route::get('/pengembalian/create', [PengembalianController::class, 'create'])->name('pengembalian.create');
+    Route::get('/pengembalian/{id}', [PengembalianController::class, 'show'])->name('pengembalian.show');
     Route::get('/pengembalian/pengiriman/{id}/detail', [PengembalianController::class, 'getPengirimanDetail'])->name('pengembalian.pengiriman.detail');
     Route::post('/pengembalian', [PengembalianController::class, 'store'])->name('pengembalian.store');
     Route::get('/stok', [StokController::class, 'index'])->name('stok');

@@ -104,8 +104,8 @@ class PengirimanController extends Controller
             abort(403, 'Anda tidak memiliki akses ke pengiriman ini');
         }
 
-        // Check if this pengiriman can have pengembalian
-        $canReturn = $this->canPengirimanReturn($id);
+        // Check pengambilan pipa status
+        $pengambilanPipa = $this->getPengambilanPipaStatus($id);
 
         // Get faktur info
         $faktur = Faktur::find($pengiriman->id_faktur);
@@ -161,7 +161,7 @@ class PengirimanController extends Controller
             'is_approve' => $pengiriman->is_approve,
             'qty_pesan' => $pengiriman->qty_pesan,
             'qty_nota' => $pengiriman->qty_nota,
-            'can_return' => $canReturn,
+            'pengambilan_pipa' => $pengambilanPipa,
             'produk_nota' => $produkNota,
             'produk_pipa' => $produkPipa,
             'persons' => $persons,
@@ -461,9 +461,9 @@ class PengirimanController extends Controller
         }
     }
 
-    private function canPengirimanReturn(int $idPengiriman): bool
+    private function getPengambilanPipaStatus(int $idPengiriman): ?int
     {
-        // Check if pengiriman exists and meets criteria for return
+        // Check if pengiriman exists and meets criteria
         $pengiriman = DB::table('pengiriman as p')
             ->join('pelanggan as pl', 'pl.id', '=', 'p.id_pelanggan')
             ->join(DB::raw('(SELECT id_pengiriman FROM pengiriman_detail WHERE row_status = 1 GROUP BY id_pengiriman) AS y'), 'y.id_pengiriman', '=', 'p.id')
@@ -471,16 +471,25 @@ class PengirimanController extends Controller
             ->where('p.row_status', 1)
             ->where('p.status', 1)
             ->where('p.is_approve', 1)
-            ->whereNotExists(function ($query) use ($idPengiriman) {
-                $query->select(DB::raw(1))
-                    ->from('pengembalian_pipa')
-                    ->where('id_pengiriman', $idPengiriman)
-                    ->where('row_status', 1)
-                    ->where('is_approve', 1);
-            })
             ->exists();
 
-        return $pengiriman;
+        if (!$pengiriman) {
+            return null; // Pengiriman tidak memenuhi kriteria
+        }
+
+        // Check if there's already an existing pengambilan_pipa
+        $existingPengambilan = DB::table('pengembalian_pipa')
+            ->where('id_pengiriman', $idPengiriman)
+            ->where('row_status', 1)
+            ->first();
+
+        if ($existingPengambilan) {
+            // Return the ID of existing pengambilan
+            return $existingPengambilan->id;
+        }
+
+        // Return 0 to indicate can create new pengambilan
+        return 0;
     }
 
     private function generateNoTransaksi(int $idFaktur): string
