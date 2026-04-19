@@ -13,6 +13,8 @@ const props = defineProps({
     penggunaList: Array,
 })
 
+console.log(props.pipaList);
+
 const activeStep = ref(0)
 const showFakturPicker = ref(false)
 const showPipaPicker = ref(false)
@@ -113,6 +115,8 @@ const selectPipaFromList = (pipa) => {
             kode: pipa.kode,
             nama: pipa.nama,
             qty: pipa.stok, // Set qty to stok
+            stok: pipa.stok, // Keep original stok for max value
+            is_qty_editable: pipa.is_qty_editable, // Add editable flag
         })
     }
     showPipaPicker.value = false
@@ -350,15 +354,25 @@ const isNextButtonDisabled = computed(() => {
                     <div class="space-y-3">
                         <div v-for="(pipa, index) in selectedPipaList" :key="pipa.id"
                             class="bg-white rounded-lg p-4 shadow-sm">
-                            <div class="flex justify-between items-center">
-                                <div class="flex-1">
-                                    <div class="text-sm font-semibold text-gray-900">{{ pipa.kode }} - {{ pipa.nama }}
-                                    </div>
-                                    <div class="text-xs text-gray-600 mt-1">Qty: {{ pipa.qty }}</div>
+                            <div class="mb-3">
+                                <div class="text-sm font-semibold text-gray-900 mb-1">{{ pipa.kode }} - {{ pipa.nama }}</div>
+                                <div class="text-xs text-gray-600">Stok tersedia: {{ pipa.stok }}</div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-700">Qty:</span>
+                                <div class="flex items-center gap-3">
+                                    <Stepper 
+                                        v-model="selectedPipaList[index].qty" 
+                                        :min="1" 
+                                        :max="pipa.stok"
+                                        :disabled="!pipa.is_qty_editable"
+                                        integer
+                                        class="large-stepper"
+                                    />
+                                    <Button size="small" type="danger" plain @click="removePipa(index)">
+                                        Hapus
+                                    </Button>
                                 </div>
-                                <Button size="small" type="danger" plain @click="removePipa(index)">
-                                    Hapus
-                                </Button>
                             </div>
                         </div>
                     </div>
@@ -508,6 +522,21 @@ const isNextButtonDisabled = computed(() => {
 /* Stepper text */
 :deep(.van-stepper__input) {
     font-size: 15px;
+}
+
+/* Larger stepper size */
+:deep(.large-stepper .van-stepper__minus),
+:deep(.large-stepper .van-stepper__plus) {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+}
+
+:deep(.large-stepper .van-stepper__input) {
+    width: 50px;
+    height: 36px;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 /* Picker and popup text */

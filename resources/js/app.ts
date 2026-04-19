@@ -1,11 +1,11 @@
 import { createInertiaApp } from '@inertiajs/vue3';
 import { Locale } from 'vant';
-import idId from 'vant/es/locale/lang/id-ID';
+import idID from 'vant/es/locale/lang/id-ID';
 
 import 'vant/lib/index.css';
 
-// Set Vant locale to English
-Locale.use('id-ID', idId);
+// Set Vant locale to Indonesian
+Locale.use('id-ID', idID);
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -13,12 +13,12 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 const initializeFontSize = () => {
     const savedFontSize = localStorage.getItem('app-font-size')
     if (savedFontSize) {
-        // Font size options with very subtle scales
+        // Font size options with updated scales
         const fontSizeOptions: Record<string, number> = {
-            'small': 0.97,
-            'normal': 1.0,
-            'medium': 1.03,
-            'large': 1.06,
+            'small': 1.0,      // Kecil (baseline)
+            'normal': 1.03,    // Normal 
+            'medium': 1.06,    // Besar
+            'large': 1.1,      // Lebih Besar
         }
         
         const scale = fontSizeOptions[savedFontSize] || 1.0

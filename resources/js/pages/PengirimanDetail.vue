@@ -1,6 +1,7 @@
 <script setup>
-import { NavBar, Cell, CellGroup, Button, Icon } from 'vant'
+import { NavBar, Cell, CellGroup, Button, Icon, showToast } from 'vant'
 import { computed } from 'vue'
+import { router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 const props = defineProps({
@@ -9,12 +10,53 @@ const props = defineProps({
 })
 
 const handlePengembalian = () => {
-    // TODO: Navigate to pengembalian page
-    console.log('Pengembalian clicked')
+    router.visit('/pengembalian/create')
 }
 
 const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
+    // Check if clipboard API is available
+    if (navigator.clipboard && window.isSecureContext) {
+        // Use modern clipboard API
+        navigator.clipboard.writeText(text).then(() => {
+            showToast({
+                message: 'Berhasil disalin',
+                type: 'success',
+                wordBreak: 'break-word',
+            })
+        }).catch(() => {
+            showToast({
+                message: 'Gagal menyalin',
+                type: 'fail',
+                wordBreak: 'break-word',
+            })
+        })
+    } else {
+        // Fallback for older browsers or non-secure contexts
+        try {
+            const textArea = document.createElement('textarea')
+            textArea.value = text
+            textArea.style.position = 'fixed'
+            textArea.style.left = '-999999px'
+            textArea.style.top = '-999999px'
+            document.body.appendChild(textArea)
+            textArea.focus()
+            textArea.select()
+            document.execCommand('copy')
+            textArea.remove()
+            
+            showToast({
+                message: 'Berhasil disalin',
+                type: 'success',
+                wordBreak: 'break-word',
+            })
+        } catch (err) {
+            showToast({
+                message: 'Gagal menyalin',
+                type: 'fail',
+                wordBreak: 'break-word',
+            })
+        }
+    }
 }
 </script>
 
@@ -24,7 +66,7 @@ const copyToClipboard = (text) => {
             <NavBar :title="pengiriman.no_transaksi" left-arrow @click-left="$inertia.visit('/pengiriman')" />
         </div>
 
-        <div class="pb-24 bg-gray-50">
+        <div :class="pengiriman.can_return ? 'pb-24' : 'pb-4'" class="bg-gray-50">
             <!-- Info Section -->
             <div class="bg-white p-4 mb-3">
                 <div class="flex justify-between items-start mb-2">
@@ -33,7 +75,12 @@ const copyToClipboard = (text) => {
                 </div>
                 <div class="flex justify-between items-start mb-2">
                     <div class="text-sm text-gray-600">No. Nota</div>
-                    <div class="text-sm font-medium text-right">{{ pengiriman.no_nota }}</div>
+                    <div class="text-sm font-medium text-right">
+                        <span class="underline cursor-pointer hover:text-blue-600"
+                            @click="copyToClipboard(pengiriman.no_nota)">
+                            {{ pengiriman.no_nota }}
+                        </span>
+                    </div>
                 </div>
                 <div class="flex justify-between items-start mb-2">
                     <div class="text-sm text-gray-600">Pelanggan</div>
@@ -41,10 +88,13 @@ const copyToClipboard = (text) => {
                 </div>
                 <div class="flex justify-between items-start">
                     <div class="text-sm text-gray-600">No. Tlp/HP</div>
-                    <div class="flex items-center gap-2">
-                        <div class="text-sm font-medium">{{ pengiriman.no_telp || '-' }}</div>
-                        <Icon v-if="pengiriman.no_telp" name="copy" size="16" class="text-gray-500 cursor-pointer" 
-                            @click="copyToClipboard(pengiriman.no_telp)" />
+                    <div class="text-sm font-medium text-right">
+                        <span v-if="pengiriman.no_telp && pengiriman.no_telp !== '-'"
+                            class="underline cursor-pointer hover:text-blue-600"
+                            @click="copyToClipboard(pengiriman.no_telp)">
+                            {{ pengiriman.no_telp }}
+                        </span>
+                        <span v-else>-</span>
                     </div>
                 </div>
             </div>
@@ -52,7 +102,8 @@ const copyToClipboard = (text) => {
             <!-- Alamat Pengiriman -->
             <div class="bg-white p-4 mb-3">
                 <div class="text-sm font-semibold text-gray-900 mb-2">Alamat Pengiriman</div>
-                <div class="text-sm text-gray-700 bg-gray-50 p-3 rounded">
+                <div class="text-sm text-gray-700 bg-gray-50 p-3 rounded underline cursor-pointer hover:text-blue-600"
+                    @click="copyToClipboard(pengiriman.alamat)">
                     {{ pengiriman.alamat }}
                 </div>
             </div>
@@ -111,7 +162,7 @@ const copyToClipboard = (text) => {
         </div>
 
         <!-- Bottom Button - Fixed at bottom like tabbar -->
-        <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
+        <div v-if="pengiriman.can_return" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
             <Button type="primary" block round size="large" @click="handlePengembalian">
                 Pengembalian
             </Button>

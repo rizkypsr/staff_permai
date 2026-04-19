@@ -20,6 +20,41 @@
     /* Target specific text elements to avoid affecting layout containers */
 }
 
+/* Global primary button styling - black text */
+:deep(.van-button--primary) {
+    color: #000000 !important;
+}
+
+:deep(.van-button--primary .van-button__text) {
+    color: #000000 !important;
+}
+
+:deep(.van-button--primary .van-button__content) {
+    color: #000000 !important;
+}
+
+/* Also target any text/icons inside primary buttons */
+:deep(.van-button--primary *) {
+    color: #000000 !important;
+}
+
+/* Global styles without :deep() */
+.van-button--primary {
+    color: #000000 !important;
+}
+
+.van-button--primary .van-button__text {
+    color: #000000 !important;
+}
+
+.van-button--primary .van-button__content {
+    color: #000000 !important;
+}
+
+.van-button--primary * {
+    color: #000000 !important;
+}
+
 .font-scaling-enabled h1,
 .font-scaling-enabled h2,
 .font-scaling-enabled h3,

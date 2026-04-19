@@ -21,6 +21,7 @@ const getCurrentRoute = () => {
 // Initialize with server-safe defaults
 const shouldShowTabbar = ref(false)
 const active = ref('absensi')
+const isWelcomePage = ref(false)
 
 onMounted(() => {
     // Only access window after component is mounted
@@ -29,6 +30,7 @@ onMounted(() => {
         
         const path = window.location.pathname
         shouldShowTabbar.value = path === '/' || path === '/pengiriman' || path === '/stok'
+        isWelcomePage.value = path === '/' || path === '/absensi'
     }
 })
 
@@ -46,9 +48,9 @@ const onChange = (name) => {
 <template>
     <div class="h-dvh bg-gray-50 flex justify-center overflow-hidden">
         <!-- Mobile-first container with max-width for desktop -->
-        <div class="w-full max-w-md bg-white h-full shadow-lg relative flex flex-col">
-            <!-- Main Content - scrollable -->
-            <div class="flex-1 overflow-y-auto">
+        <div class="w-full max-w-md bg-white h-full shadow-lg relative flex flex-col" :class="{ 'overflow-hidden': isWelcomePage }">
+            <!-- Main Content - conditional scroll behavior -->
+            <div class="flex-1" :class="{ 'overflow-hidden': isWelcomePage, 'overflow-y-auto': !isWelcomePage }">
                 <slot />
             </div>
 

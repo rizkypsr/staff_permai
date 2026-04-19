@@ -104,6 +104,9 @@ class PengirimanController extends Controller
             abort(403, 'Anda tidak memiliki akses ke pengiriman ini');
         }
 
+        // Check if this pengiriman can have pengembalian
+        $canReturn = $this->canPengirimanReturn($id);
+
         // Get faktur info
         $faktur = Faktur::find($pengiriman->id_faktur);
 
@@ -158,6 +161,7 @@ class PengirimanController extends Controller
             'is_approve' => $pengiriman->is_approve,
             'qty_pesan' => $pengiriman->qty_pesan,
             'qty_nota' => $pengiriman->qty_nota,
+            'can_return' => $canReturn,
             'produk_nota' => $produkNota,
             'produk_pipa' => $produkPipa,
             'persons' => $persons,
@@ -255,6 +259,7 @@ class PengirimanController extends Controller
                         'nama' => $item->nama,
                         'stok' => $stok,
                         'id_satuan' => $item->id_satuan,
+                        'is_qty_editable' => $item->is_qty_editable, // Add this field
                         'label' => "{$item->kode} - {$item->nama} | Qty: {$stok}",
                     ];
                 })
@@ -454,6 +459,28 @@ class PengirimanController extends Controller
 
             return back()->withErrors(['error' => 'Gagal membuat pengiriman: '.$e->getMessage()]);
         }
+    }
+
+    private function canPengirimanReturn(int $idPengiriman): bool
+    {
+        // Check if pengiriman exists and meets criteria for return
+        $pengiriman = DB::table('pengiriman as p')
+            ->join('pelanggan as pl', 'pl.id', '=', 'p.id_pelanggan')
+            ->join(DB::raw('(SELECT id_pengiriman FROM pengiriman_detail WHERE row_status = 1 GROUP BY id_pengiriman) AS y'), 'y.id_pengiriman', '=', 'p.id')
+            ->where('p.id', $idPengiriman)
+            ->where('p.row_status', 1)
+            ->where('p.status', 1)
+            ->where('p.is_approve', 1)
+            ->whereNotExists(function ($query) use ($idPengiriman) {
+                $query->select(DB::raw(1))
+                    ->from('pengembalian_pipa')
+                    ->where('id_pengiriman', $idPengiriman)
+                    ->where('row_status', 1)
+                    ->where('is_approve', 1);
+            })
+            ->exists();
+
+        return $pengiriman;
     }
 
     private function generateNoTransaksi(int $idFaktur): string

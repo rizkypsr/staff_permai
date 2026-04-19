@@ -81,13 +81,13 @@ const finished = computed(() => {
     <AppLayout>
         <!-- Header/Navbar -->
         <div class="sticky top-0 z-10 bg-white">
-            <NavBar title="Pengiriman" left-arrow @click-left="$inertia.visit('/')" />
+            <NavBar title="Pengiriman" />
 
             <!-- Search Bar -->
             <div class="px-4 py-3 flex gap-2 items-center">
                 <Search v-model="searchQuery" placeholder="Cari Pengiriman" shape="round" class="flex-1"
                     @search="handleSearch" />
-                <Button icon="plus" size="small" type="primary" round @click="handleAddPengiriman" />
+                <Button icon="plus" size="small" type="primary" round class="black-icon" @click="handleAddPengiriman" />
             </div>
         </div>
 
@@ -102,7 +102,7 @@ const finished = computed(() => {
                                 class="bg-white rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                                 @click="handleDetailClick(item.id)">
                                 <!-- Header Orange -->
-                                <div class="bg-[#d97642] text-white px-4 py-3 font-semibold text-center">
+                                <div class="bg-[#fec109] text-black px-4 py-3 font-semibold text-center">
                                     {{ item.no_transaksi }}
                                 </div>
 
@@ -169,5 +169,10 @@ const finished = computed(() => {
 
 :deep(.van-pull-refresh__track) {
     min-height: 100%;
+}
+
+/* Black icon for add button */
+:deep(.black-icon .van-icon) {
+    color: #000000 !important;
 }
 </style>

@@ -1,68 +1,88 @@
 <script setup>
-import { Link } from '@inertiajs/vue3'
-import { NavBar, Button, Grid, GridItem, Empty } from 'vant'
+import { router, InfiniteScroll } from '@inertiajs/vue3'
+import { NavBar, List, PullRefresh, Cell, Empty, Search } from 'vant'
+import { ref, computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 
-defineProps({
+const props = defineProps({
     auth: Object,
+    stok: Object,
+    search: String,
+})
+
+const refreshing = ref(false)
+const searchValue = ref(props.search || '')
+
+const onRefresh = () => {
+    refreshing.value = true
+    router.reload({
+        preserveState: false,
+        preserveScroll: false,
+        onFinish: () => {
+            refreshing.value = false
+        },
+    })
+}
+
+const onSearch = () => {
+    router.get('/stok', { search: searchValue.value }, {
+        preserveState: false,
+        preserveScroll: false,
+        replace: true,
+    })
+}
+
+const formatNumber = (num) => {
+    return new Intl.NumberFormat('id-ID').format(num)
+}
+
+const hasData = computed(() => {
+    return props.stok?.data && props.stok.data.length > 0
+})
+
+const finished = computed(() => {
+    return !props.stok?.next_page_url
 })
 </script>
 
 <template>
     <AppLayout>
-        <!-- Header/Navbar - positioned within max-width container -->
-        <div class="sticky top-0 z-10">
-            <NavBar title="Stok">
-                <template #right>
-                    <Link
-                        href="/logout"
-                        method="post"
-                        as="button"
-                    >
-                        <Button size="small" type="danger" round>Logout</Button>
-                    </Link>
-                </template>
-            </NavBar>
+        <!-- Header/Navbar -->
+        <div class="sticky top-0 z-10 bg-white">
+            <NavBar title="Stok Produk" />
+            <div class="px-4 pb-3">
+                <Search
+                    v-model="searchValue"
+                    placeholder="Cari produk..."
+                    shape="round"
+                    @search="onSearch"
+                    @clear="onSearch"
+                />
+            </div>
         </div>
 
         <!-- Main Content -->
-        <div class="p-4">
-            <!-- Quick Actions -->
-            <div class="mb-4">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3 px-2">Menu Stok</h3>
-                <Grid :column-num="2" :gutter="12">
-                    <GridItem>
-                        <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
-                            <div class="text-3xl mb-2">📊</div>
-                            <div class="text-sm font-medium text-gray-900">Lihat Stok</div>
-                        </div>
-                    </GridItem>
-                    <GridItem>
-                        <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
-                            <div class="text-3xl mb-2">➕</div>
-                            <div class="text-sm font-medium text-gray-900">Tambah Stok</div>
-                        </div>
-                    </GridItem>
-                    <GridItem>
-                        <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
-                            <div class="text-3xl mb-2">➖</div>
-                            <div class="text-sm font-medium text-gray-900">Kurangi Stok</div>
-                        </div>
-                    </GridItem>
-                    <GridItem>
-                        <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
-                            <div class="text-3xl mb-2">📋</div>
-                            <div class="text-sm font-medium text-gray-900">Riwayat</div>
-                        </div>
-                    </GridItem>
-                </Grid>
-            </div>
-
-            <!-- Empty State -->
-            <div class="mt-8">
-                <Empty description="Belum ada data stok" />
-            </div>
-        </div>
+        <PullRefresh v-model="refreshing" @refresh="onRefresh">
+            <InfiniteScroll data="stok" v-slot="{ loading }">
+                <List :loading="loading" :finished="finished" finished-text="Tidak ada data lagi">
+                    <div v-if="hasData">
+                        <Cell
+                            v-for="item in stok.data"
+                            :key="item.id"
+                            :title="item.nama"
+                            :label="item.kode"
+                        >
+                            <template #value>
+                                <div class="text-right stock-value">
+                                    {{ formatNumber(item.qty) }} {{ item.satuan }}
+                                </div>
+                            </template>
+                        </Cell>
+                    </div>
+                    <Empty v-else description="Tidak ada data stok" />
+                </List>
+            </InfiniteScroll>
+        </PullRefresh>
     </AppLayout>
 </template>
 
@@ -73,5 +93,25 @@ defineProps({
 
 :deep(.van-nav-bar__title) {
     font-weight: 600;
+}
+
+:deep(.van-search) {
+    padding: 0;
+}
+
+:deep(.van-cell__title) {
+    font-size: 15px;
+    font-weight: 500;
+}
+
+:deep(.van-cell__label) {
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+.stock-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: #323233;
 }
 </style>

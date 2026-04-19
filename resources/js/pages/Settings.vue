@@ -7,16 +7,16 @@ const props = defineProps({
     auth: Object,
 })
 
-// Font size options with very subtle scales
+// Font size options with updated labels and scales
 const fontSizeOptions = [
-    { label: 'Kecil', value: 'small', scale: 0.97 },
-    { label: 'Normal', value: 'normal', scale: 1.0 },
-    { label: 'Sedang', value: 'medium', scale: 1.03 },
-    { label: 'Besar', value: 'large', scale: 1.06 },
+    { label: 'Kecil', value: 'small', scale: 1.0 },      // Was Normal
+    { label: 'Normal', value: 'normal', scale: 1.03 },   // Was Sedang  
+    { label: 'Besar', value: 'medium', scale: 1.06 },    // Was Besar
+    { label: 'Lebih Besar', value: 'large', scale: 1.1 }, // New larger option
 ]
 
-// Current font size selection
-const selectedFontSize = ref('normal')
+// Current font size selection - default to 'small' which is now the baseline
+const selectedFontSize = ref('small')
 
 // Load saved font size from localStorage
 onMounted(() => {
