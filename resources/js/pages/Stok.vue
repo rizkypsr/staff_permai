@@ -51,13 +51,8 @@ const finished = computed(() => {
         <div class="sticky top-0 z-10 bg-white">
             <NavBar title="Stok Produk" />
             <div class="px-4 pb-3">
-                <Search
-                    v-model="searchValue"
-                    placeholder="Cari produk..."
-                    shape="round"
-                    @search="onSearch"
-                    @clear="onSearch"
-                />
+                <Search v-model="searchValue" placeholder="Cari produk..." shape="round" @search="onSearch"
+                    @clear="onSearch" />
             </div>
         </div>
 
@@ -66,12 +61,8 @@ const finished = computed(() => {
             <InfiniteScroll data="stok" v-slot="{ loading }">
                 <List :loading="loading" :finished="finished" finished-text="Tidak ada data lagi">
                     <div v-if="hasData">
-                        <Cell
-                            v-for="item in stok.data"
-                            :key="item.id"
-                            :title="item.nama"
-                            :label="item.kode"
-                        >
+                        <Cell v-for="item in stok.data" :key="item.id" :title="item.nama" :label="item.kode" 
+                              label-class="text-xs text-gray-500">
                             <template #value>
                                 <div class="text-right stock-value">
                                     {{ formatNumber(item.qty) }} {{ item.satuan }}

@@ -26,7 +26,6 @@ const submit = () => {
                         <Field
                             v-model="form.login"
                             name="login"
-                            label="Email/Username"
                             placeholder="Masukkan email atau username"
                             :error-message="form.errors.login"
                             required
@@ -36,7 +35,6 @@ const submit = () => {
                             v-model="form.password"
                             name="password"
                             type="password"
-                            label="Password"
                             placeholder="Masukkan password"
                             :error-message="form.errors.password"
                             required
@@ -65,12 +63,6 @@ const submit = () => {
 <style scoped>
 :deep(.van-cell-group--inset) {
     margin: 0;
-}
-
-:deep(.van-field__label) {
-    font-size: 13px;
-    white-space: nowrap;
-    min-width: 110px;
 }
 
 :deep(.van-field__control) {
