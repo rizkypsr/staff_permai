@@ -142,9 +142,9 @@ const handleLogout = async () => {
     <AppLayout>
         <div class="h-dvh flex flex-col">
             <!-- Header with orange background - Fixed -->
-            <div class="bg-[#ff6b35] text-white flex-shrink-0">
+            <div class="bg-[#ff6b35] text-white shrink-0">
                 <!-- Navbar -->
-                <NavBar title="MPE APP" class="!bg-transparent">
+                <NavBar title="MPE APP" class="bg-transparent!">
                     <template #right>
                         <Popover v-model:show="showPopover" :actions="menuActions" placement="bottom-end"
                             @select="handleMenuClick">
@@ -156,18 +156,18 @@ const handleLogout = async () => {
                 </NavBar>
 
                 <!-- Time Display -->
-                <div class="text-center py-8 px-4">
-                    <div class="font-bold mb-2" style="font-size: 4rem !important; line-height: 1 !important;">
+                <div class="text-center py-4 px-4">
+                    <div class="font-bold mb-2" style="font-size: 2.5rem !important; line-height: 1 !important;">
                         {{ currentTimeString }}
                     </div>
-                    <div class="opacity-90" style="font-size: 1.25rem !important;">
+                    <div class="opacity-90" style="font-size: 1.1rem !important;">
                         {{ currentDate }}
                     </div>
                 </div>
 
                 <!-- Status Card -->
-                <div class="px-4 pb-6">
-                    <div class="bg-white rounded-2xl p-6 text-gray-900">
+                <div class="px-4 pb-2">
+                    <div class="bg-white rounded-2xl px-6 py-4 text-gray-900">
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <div class="text-lg font-bold mb-1">Jam Masuk</div>
@@ -181,7 +181,7 @@ const handleLogout = async () => {
 
                         <!-- Absen Button -->
                         <Button type="default" block round size="large" :disabled="!canAbsen"
-                            class="!bg-black !text-white !border-black !h-12 !text-lg !font-bold disabled:!bg-gray-400 disabled:!border-gray-400"
+                            class="bg-black! text-white! border-black! h-12! text-lg! font-bold! disabled:bg-gray-400! disabled:border-gray-400!"
                             @click="handleAbsen">
                             {{ canAbsen ? 'Absen' : (todayAbsensi ? 'Sudah Absen' : 'Belum Waktunya') }}
                         </Button>
@@ -193,7 +193,8 @@ const handleLogout = async () => {
             <div class="flex-1 bg-white flex flex-col overflow-hidden">
                 <Tabs v-model:active="activeTab" color="#fec109" title-active-color="#fec109"
                     title-inactive-color="#969799" class="h-full flex flex-col">
-                    <Tab v-for="(monthData, index) in absensiData" :key="index" :title="monthData.month" class="flex-1 overflow-hidden">
+                    <Tab v-for="(monthData, index) in absensiData" :key="index" :title="monthData.month"
+                        class="flex-1 overflow-hidden">
                         <!-- Scrollable content that fills remaining space -->
                         <div class="h-full overflow-y-auto">
                             <div v-if="monthData.data.length > 0">
