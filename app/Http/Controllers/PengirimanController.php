@@ -27,12 +27,12 @@ class PengirimanController extends Controller
             ->where('row_status', 1)
             ->pluck('id_pengiriman');
 
-        // Build query for pengiriman data - only approved (is_approve = 1)
+        // Build query for pengiriman data - show all pengiriman
         $pengirimanQuery = Pengiriman::whereIn('id', $pengirimanIds)
             ->where('status', 1)
             ->where('row_status', 1)
-            ->where('is_approve', 1) // Only show approved pengiriman
             ->with(['pelanggan', 'persons.pengguna'])
+            ->orderBy('is_approve', 'asc') // is_approve = 0 (pending) first
             ->orderBy('tgl', 'desc');
 
         // Apply search if provided
@@ -49,11 +49,19 @@ class PengirimanController extends Controller
             });
         }
 
+        // Apply approval filter if provided
+        if ($request->has('is_approve') && $request->is_approve !== '') {
+            $pengirimanQuery->where('is_approve', $request->is_approve);
+        }
+
         // Paginate the results
         $pengirimanPaginated = $pengirimanQuery->paginate(10);
 
         // Transform the data
         $pengirimanPaginated->getCollection()->transform(function ($item) {
+            // Get pengambilan pipa status for each item
+            $pengambilanPipa = $this->getPengambilanPipaStatus($item->id);
+            
             return [
                 'id' => $item->id,
                 'no_transaksi' => $item->no_transaksi,
@@ -66,6 +74,7 @@ class PengirimanController extends Controller
                 'is_approve' => $item->is_approve,
                 'qty_pesan' => $item->qty_pesan,
                 'qty_nota' => $item->qty_nota,
+                'pengambilan_pipa' => $pengambilanPipa,
                 'persons' => $item->persons->map(function ($person) {
                     return [
                         'nama' => $person->pengguna->nama,
@@ -77,6 +86,7 @@ class PengirimanController extends Controller
         return Inertia::render('Pengiriman', [
             'pengiriman' => Inertia::scroll(fn () => $pengirimanPaginated),
             'search' => $request->search ?? '',
+            'is_approve' => $request->is_approve ?? '',
         ]);
     }
 
@@ -90,7 +100,6 @@ class PengirimanController extends Controller
             'persons.pengguna',
         ])
             ->where('id', $id)
-            ->where('is_approve', 1)
             ->where('row_status', 1)
             ->firstOrFail();
 
@@ -463,32 +472,43 @@ class PengirimanController extends Controller
 
     private function getPengambilanPipaStatus(int $idPengiriman): ?int
     {
-        // Check if pengiriman exists and meets criteria
+        // Check if pengiriman meets criteria for pengembalian (same as PengembalianController create method)
         $pengiriman = DB::table('pengiriman as p')
-            ->join('pelanggan as pl', 'pl.id', '=', 'p.id_pelanggan')
-            ->join(DB::raw('(SELECT id_pengiriman FROM pengiriman_detail WHERE row_status = 1 GROUP BY id_pengiriman) AS y'), 'y.id_pengiriman', '=', 'p.id')
+            ->whereExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('pengiriman_detail')
+                    ->whereColumn('pengiriman_detail.id_pengiriman', 'p.id')
+                    ->where('pengiriman_detail.row_status', 1);
+            })
             ->where('p.id', $idPengiriman)
             ->where('p.row_status', 1)
             ->where('p.status', 1)
             ->where('p.is_approve', 1)
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('pengembalian_pipa')
+                    ->whereColumn('pengembalian_pipa.id_pengiriman', 'p.id')
+                    ->where('pengembalian_pipa.row_status', 1)
+                    ->where('pengembalian_pipa.is_approve', 1);
+            })
             ->exists();
 
         if (!$pengiriman) {
             return null; // Pengiriman tidak memenuhi kriteria
         }
 
-        // Check if there's already an existing pengambilan_pipa
-        $existingPengambilan = DB::table('pengembalian_pipa')
+        // Check if there's already an existing pengembalian_pipa (any status)
+        $existingPengembalian = DB::table('pengembalian_pipa')
             ->where('id_pengiriman', $idPengiriman)
             ->where('row_status', 1)
             ->first();
 
-        if ($existingPengambilan) {
-            // Return the ID of existing pengambilan
-            return $existingPengambilan->id;
+        if ($existingPengembalian) {
+            // Return the ID of existing pengembalian
+            return $existingPengembalian->id;
         }
 
-        // Return 0 to indicate can create new pengambilan
+        // Return 0 to indicate can create new pengembalian
         return 0;
     }
 

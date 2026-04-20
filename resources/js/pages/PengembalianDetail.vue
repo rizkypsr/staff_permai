@@ -7,7 +7,6 @@ const props = defineProps({
     auth: Object,
     pengembalian: Object,
 })
-console.log(props.pengembalian);
 
 const goBack = () => {
     router.visit('/pengiriman')

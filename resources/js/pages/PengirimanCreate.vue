@@ -13,8 +13,6 @@ const props = defineProps({
     penggunaList: Array,
 })
 
-console.log(props.pipaList);
-
 const activeStep = ref(0)
 const showFakturPicker = ref(false)
 const showPipaPicker = ref(false)

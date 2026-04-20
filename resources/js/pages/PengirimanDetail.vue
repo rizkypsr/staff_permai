@@ -10,26 +10,26 @@ const props = defineProps({
 })
 
 const handlePengembalian = () => {
-    if (props.pengiriman.pengambilan_pipa === 0) {
+    if (props.pengiriman.pengambilan_pipa === null) {
         // Bisa buat pengambilan baru
         router.visit('/pengembalian/create')
-    } else if (props.pengiriman.pengambilan_pipa > 0) {
+    } else {
         // Sudah ada pengambilan, buka detail
         router.visit(`/pengembalian/${props.pengiriman.pengambilan_pipa}`)
     }
 }
 
-const showPengambilanButton = computed(() => {
-    return props.pengiriman.pengambilan_pipa !== null
-})
-
 const pengambilanButtonText = computed(() => {
-    if (props.pengiriman.pengambilan_pipa === 0) {
+    if (props.pengiriman.pengambilan_pipa === null) {
         return 'Pengembalian'
-    } else if (props.pengiriman.pengambilan_pipa > 0) {
+    } else {
         return 'Lihat Pengembalian'
     }
-    return ''
+})
+
+const showPengambilanButton = computed(() => {
+    // Hanya tampilkan tombol jika pengiriman sudah disetujui DAN memenuhi kriteria pengembalian
+    return props.pengiriman.is_approve && props.pengiriman.pengambilan_pipa !== null
 })
 
 const copyToClipboard = (text) => {

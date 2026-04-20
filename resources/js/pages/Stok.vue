@@ -61,8 +61,8 @@ const finished = computed(() => {
             <InfiniteScroll data="stok" v-slot="{ loading }">
                 <List :loading="loading" :finished="finished" finished-text="Tidak ada data lagi">
                     <div v-if="hasData">
-                        <Cell v-for="item in stok.data" :key="item.id" :title="item.nama" :label="item.kode" 
-                              label-class="text-xs text-gray-500">
+                        <Cell v-for="item in stok.data" :key="item.id" :title="item.nama"
+                            label-class="text-xs text-gray-500">
                             <template #value>
                                 <div class="text-right stock-value">
                                     {{ formatNumber(item.qty) }} {{ item.satuan }}

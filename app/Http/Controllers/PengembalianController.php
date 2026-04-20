@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +69,7 @@ class PengembalianController extends Controller
     public function show(Request $request, $id): Response
     {
         // Get pengembalian data with pengiriman info
-        $pengembalian = DB::selectOne("
+        $pengembalian = DB::selectOne('
             SELECT pp.id, pp.no_transaksi, pp.tgl, pp.id_pengiriman, 
                    p.no_transaksi AS no_pengiriman, pp.keterangan, pp.is_approve,
                    pp.qty, pl.nama as pelanggan_nama, p.alamat
@@ -76,27 +77,27 @@ class PengembalianController extends Controller
             JOIN pengiriman p ON p.id = pp.id_pengiriman
             JOIN pelanggan pl ON pl.id = p.id_pelanggan
             WHERE pp.row_status = 1 AND pp.id = ?
-        ", [$id]);
+        ', [$id]);
 
-        if (!$pengembalian) {
+        if (! $pengembalian) {
             abort(404, 'Pengembalian tidak ditemukan');
         }
 
         // Get pengembalian detail
-        $detail = DB::select("
+        $detail = DB::select('
             SELECT ppd.id, ppd.id_pengembalian_pipa, ppd.id_produk,
                    p.nama AS produk, ppd.id_satuan, ppd.satuan,
                    ppd.qty_bawa, ppd.qty_kembali
             FROM pengembalian_pipa_detail ppd 
             JOIN ref_produk p ON p.id = ppd.id_produk 
             WHERE ppd.row_status = 1 AND ppd.id_pengembalian_pipa = ?
-        ", [$pengembalian->id]);
+        ', [$pengembalian->id]);
 
         $data = [
             'id' => $pengembalian->id,
             'no_transaksi' => $pengembalian->no_transaksi,
-            'tgl' => \Carbon\Carbon::parse($pengembalian->tgl)->format('Y-m-d'),
-            'tgl_formatted' => \Carbon\Carbon::parse($pengembalian->tgl)->translatedFormat('d F Y'),
+            'tgl' => Carbon::parse($pengembalian->tgl)->format('Y-m-d'),
+            'tgl_formatted' => Carbon::parse($pengembalian->tgl)->translatedFormat('d F Y'),
             'no_pengiriman' => $pengembalian->no_pengiriman,
             'pelanggan' => $pengembalian->pelanggan_nama,
             'alamat' => $pengembalian->alamat,
@@ -166,8 +167,8 @@ class PengembalianController extends Controller
                 return back()->withErrors(['error' => 'Pengiriman tidak ditemukan']);
             }
 
-            // Generate no_transaksi: replace P-A with RP-
-            $noTransaksi = str_replace('P-A', 'RP-', $pengiriman->no_transaksi);
+            // Generate no_transaksi: replace P- with RP-
+            $noTransaksi = str_replace('P-', 'RP-', $pengiriman->no_transaksi);
 
             // Create pengembalian_pipa record
             $pengembalianId = DB::table('pengembalian_pipa')->insertGetId([
@@ -213,6 +214,13 @@ class PengembalianController extends Controller
                 DB::table('pengembalian_pipa')
                     ->where('id', $pengembalianId)
                     ->update(['qty' => $totalQtyKembali]);
+            } else {
+                // If no detail records, still need to commit the main record
+                // but this might be an edge case to handle
+                \Log::warning('Pengembalian created without detail records', [
+                    'pengembalian_id' => $pengembalianId,
+                    'pengiriman_id' => $validated['id_pengiriman'],
+                ]);
             }
 
             DB::commit();
@@ -220,6 +228,10 @@ class PengembalianController extends Controller
             return redirect()->route('pengiriman')->with('success', 'Pengembalian berhasil dibuat');
         } catch (\Exception $e) {
             DB::rollBack();
+            \Log::error('Failed to create pengembalian', [
+                'error' => $e->getMessage(),
+                'pengiriman_id' => $validated['id_pengiriman'] ?? null,
+            ]);
 
             return back()->withErrors(['error' => 'Gagal membuat pengembalian: '.$e->getMessage()]);
         }

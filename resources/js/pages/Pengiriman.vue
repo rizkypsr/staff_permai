@@ -1,7 +1,7 @@
 <script setup>
 import { router } from '@inertiajs/vue3'
 import { InfiniteScroll } from '@inertiajs/vue3'
-import { NavBar, Button, Search, Empty, List, PullRefresh } from 'vant'
+import { NavBar, Button, Search, Empty, List, PullRefresh, Icon, RadioGroup, Radio } from 'vant'
 import { ref, watch, computed } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 
@@ -9,9 +9,11 @@ const props = defineProps({
     auth: Object,
     pengiriman: Object,
     search: String,
+    is_approve: String,
 })
 
 const searchQuery = ref(props.search || '')
+const approvalFilter = ref(props.is_approve || '')
 const refreshing = ref(false)
 
 const handleAddPengiriman = () => {
@@ -28,7 +30,7 @@ const handleDetailClick = (id) => {
 
 // Handle search
 const handleSearch = () => {
-    if (searchQuery.value === props.search) return
+    if (searchQuery.value === props.search && approvalFilter.value === props.is_approve) return
 
     const url = new URL(window.location.href)
     if (searchQuery.value) {
@@ -36,11 +38,23 @@ const handleSearch = () => {
     } else {
         url.searchParams.delete('search')
     }
+    
+    if (approvalFilter.value !== '') {
+        url.searchParams.set('is_approve', approvalFilter.value)
+    } else {
+        url.searchParams.delete('is_approve')
+    }
 
     router.visit(url.toString(), {
         preserveState: false,
         preserveScroll: false,
     })
+}
+
+// Handle approval filter change
+const handleApprovalFilter = (value) => {
+    approvalFilter.value = value
+    handleSearch()
 }
 
 // Handle pull to refresh
@@ -66,6 +80,13 @@ watch(searchQuery, (newValue) => {
     }
 })
 
+// Watch approval filter changes
+watch(approvalFilter, (newValue) => {
+    if (newValue !== props.is_approve) {
+        handleSearch()
+    }
+})
+
 // Check if we have data
 const hasData = computed(() => {
     return props.pengiriman?.data && props.pengiriman.data.length > 0
@@ -83,11 +104,24 @@ const finished = computed(() => {
         <div class="sticky top-0 z-10 bg-white">
             <NavBar title="Pengiriman" />
 
-            <!-- Search Bar -->
-            <div class="px-4 py-3 flex gap-2 items-center">
-                <Search v-model="searchQuery" placeholder="Cari Pengiriman" shape="round" class="flex-1"
-                    @search="handleSearch" />
-                <Button icon="plus" size="small" type="primary" round class="black-icon" @click="handleAddPengiriman" />
+            <!-- Search Bar and Filter -->
+            <div class="px-4 pt-3 pb-6 space-y-3">
+                <!-- Search and Add Button -->
+                <div class="flex gap-2 items-center">
+                    <Search v-model="searchQuery" placeholder="Cari Pengiriman" shape="round" class="flex-1"
+                        @search="handleSearch" />
+                    <Button icon="plus" size="small" type="primary" round class="black-icon" @click="handleAddPengiriman" />
+                </div>
+                
+                <!-- Filter Radio -->
+                <div class="space-y-2 pb-2">
+                    <span class="text-sm text-gray-600">Filter Status:</span>
+                    <RadioGroup v-model="approvalFilter" direction="horizontal" @change="handleApprovalFilter">
+                        <Radio name="" checked-color="#fec109">Semua</Radio>
+                        <Radio name="0" checked-color="#fec109">Belum Disetujui</Radio>
+                        <Radio name="1" checked-color="#fec109">Disetujui</Radio>
+                    </RadioGroup>
+                </div>
             </div>
         </div>
 
@@ -101,8 +135,8 @@ const finished = computed(() => {
                             <div v-for="item in pengiriman.data" :key="item.id"
                                 class="bg-white rounded-lg overflow-hidden shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                                 @click="handleDetailClick(item.id)">
-                                <!-- Header Orange -->
-                                <div class="bg-[#fec109] text-black px-4 py-3 font-semibold text-center">
+                                <!-- Header with dynamic color based on approval status -->
+                                <div :class="item.is_approve === 1 ? 'bg-green-500' : 'bg-[#fec109]'" class="text-black px-4 py-3 font-semibold text-center">
                                     {{ item.no_transaksi }}
                                 </div>
 
@@ -121,6 +155,11 @@ const finished = computed(() => {
                                         <span class="text-gray-900 text-right">
                                             {{ getKaryawanNames(item.persons) }}
                                         </span>
+                                    </div>
+                                    <!-- Status Pengembalian - hanya tampil jika pengambilan_pipa null -->
+                                    <div v-if="item.pengambilan_pipa === null" class="flex justify-between">
+                                        <span class="text-gray-600">Status</span>
+                                        <span class="text-orange-600 font-medium">Belum Dikembalikan</span>
                                     </div>
                                 </div>
                             </div>

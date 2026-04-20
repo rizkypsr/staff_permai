@@ -90,8 +90,6 @@ const getStatusColor = (status) => {
     }
 }
 
-console.log(props.absensiData);
-
 </script>
 
 <template>
