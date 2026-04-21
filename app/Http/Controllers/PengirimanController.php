@@ -103,6 +103,8 @@ class PengirimanController extends Controller
             ->where('row_status', 1)
             ->firstOrFail();
 
+        dd($pengiriman);
+
         // Check if user is involved in this pengiriman
         $isInvolved = PengirimanPerson::where('id_pengiriman', $id)
             ->where('id_pengguna', $user->id)
@@ -162,7 +164,7 @@ class PengirimanController extends Controller
             'tgl_formatted' => $pengiriman->tgl->translatedFormat('d F Y'),
             'no_nota' => $faktur ? $faktur->no_transaksi : '-',
             'pelanggan' => $pengiriman->pelanggan ? $pengiriman->pelanggan->nama : '-',
-            'no_telp' => $pengiriman->pelanggan ? $pengiriman->pelanggan->no_hp : '-',
+            'no_telp' => $this->getPhoneNumber($pengiriman->pelanggan),
             'alamat' => $pengiriman->alamat,
             'keterangan' => $pengiriman->keterangan,
             'status' => $pengiriman->status,
@@ -510,6 +512,24 @@ class PengirimanController extends Controller
 
         // Return 0 to indicate can create new pengembalian
         return 0;
+    }
+
+    private function getPhoneNumber($pelanggan): string
+    {
+        if (!$pelanggan) {
+            return '-';
+        }
+
+        // Prioritas: no_hp dulu, jika null/kosong baru no_telp
+        if (!empty($pelanggan->no_hp)) {
+            return $pelanggan->no_hp;
+        }
+
+        if (!empty($pelanggan->no_telp)) {
+            return $pelanggan->no_telp;
+        }
+
+        return '-';
     }
 
     private function generateNoTransaksi(int $idFaktur): string

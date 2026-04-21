@@ -9,6 +9,9 @@ const props = defineProps({
     pengiriman: Object,
 })
 
+console.log(props.pengiriman);
+
+
 const handlePengembalian = () => {
     if (props.pengiriman.pengambilan_pipa === null) {
         // Bisa buat pengambilan baru
