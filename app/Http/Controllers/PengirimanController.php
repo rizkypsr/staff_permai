@@ -103,8 +103,6 @@ class PengirimanController extends Controller
             ->where('row_status', 1)
             ->firstOrFail();
 
-        dd($pengiriman);
-
         // Check if user is involved in this pengiriman
         $isInvolved = PengirimanPerson::where('id_pengiriman', $id)
             ->where('id_pengguna', $user->id)
