@@ -163,7 +163,7 @@ class PengirimanController extends Controller
             'no_nota' => $faktur ? $faktur->no_transaksi : '-',
             'pelanggan' => $pengiriman->pelanggan ? $pengiriman->pelanggan->nama : '-',
             'no_telp' => $this->getPhoneNumber($pengiriman->pelanggan),
-            'alamat' => $pengiriman->alamat,
+            'alamat' => $pengiriman->pelanggan ? $pengiriman->pelanggan->alamat : '-',
             'keterangan' => $pengiriman->keterangan,
             'status' => $pengiriman->status,
             'status_text' => $this->getStatusText($pengiriman->status),
