@@ -13,7 +13,7 @@ console.log(props.pengiriman);
 
 
 const handlePengembalian = () => {
-    if (props.pengiriman.pengambilan_pipa === null) {
+    if (props.pengiriman.pengambilan_pipa === 0) {
         // Bisa buat pengambilan baru
         router.visit('/pengembalian/create')
     } else {
@@ -23,7 +23,7 @@ const handlePengembalian = () => {
 }
 
 const pengambilanButtonText = computed(() => {
-    if (props.pengiriman.pengambilan_pipa === null) {
+    if (props.pengiriman.pengambilan_pipa === 0) {
         return 'Pengembalian'
     } else {
         return 'Lihat Pengembalian'
@@ -31,8 +31,11 @@ const pengambilanButtonText = computed(() => {
 })
 
 const showPengambilanButton = computed(() => {
-    // Hanya tampilkan tombol jika pengiriman sudah disetujui DAN memenuhi kriteria pengembalian
-    return props.pengiriman.is_approve && props.pengiriman.pengambilan_pipa !== null
+    // Tampilkan tombol jika:
+    // - pengambilan_pipa === 0 (eligible, belum ada pengembalian)
+    // - pengambilan_pipa > 0 (eligible, sudah ada pengembalian)
+    // Jangan tampilkan jika pengambilan_pipa === null (tidak eligible)
+    return props.pengiriman.pengambilan_pipa !== null
 })
 
 const copyToClipboard = (text) => {
