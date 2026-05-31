@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -183,52 +184,40 @@ class PengembalianController extends Controller
                 'created_by' => $request->user()->id,
             ]);
 
-            // Prepare detail records (only for qty_kembali > 0)
+            // Prepare detail records — simpan SEMUA item yang dibawa,
+            // termasuk yang qty_kembali = 0 (artinya barang habis terpakai).
             $detailRecords = [];
             $totalQtyKembali = 0;
+            $userId = $request->user()->id;
 
             foreach ($validated['produk'] as $produk) {
-                if ($produk['qty_kembali'] > 0) {
-                    $detailRecords[] = [
-                        'id_pengembalian_pipa' => $pengembalianId,
-                        'id_produk' => $produk['id_produk'],
-                        'id_satuan' => $produk['id_satuan'],
-                        'satuan' => $produk['satuan'],
-                        'qty_bawa' => $produk['qty_bawa'],
-                        'qty_kembali' => $produk['qty_kembali'],
-                        'row_status' => 1,
-                        'created_at' => now(),
-                        'created_by' => $request->user()->id,
-                    ];
+                $detailRecords[] = [
+                    'id_pengembalian_pipa' => $pengembalianId,
+                    'id_produk' => $produk['id_produk'],
+                    'id_satuan' => $produk['id_satuan'],
+                    'satuan' => $produk['satuan'],
+                    'qty_bawa' => $produk['qty_bawa'],
+                    'qty_kembali' => $produk['qty_kembali'],
+                    'row_status' => 1,
+                    'created_at' => now(),
+                    'created_by' => $userId,
+                ];
 
-                    // Sum total qty_kembali
-                    $totalQtyKembali += $produk['qty_kembali'];
-                }
+                $totalQtyKembali += $produk['qty_kembali'];
             }
 
-            // Insert batch detail records
-            if (count($detailRecords) > 0) {
-                DB::table('pengembalian_pipa_detail')->insert($detailRecords);
+            DB::table('pengembalian_pipa_detail')->insert($detailRecords);
 
-                // Update qty in pengembalian_pipa with total qty_kembali
-                DB::table('pengembalian_pipa')
-                    ->where('id', $pengembalianId)
-                    ->update(['qty' => $totalQtyKembali]);
-            } else {
-                // If no detail records, still need to commit the main record
-                // but this might be an edge case to handle
-                \Log::warning('Pengembalian created without detail records', [
-                    'pengembalian_id' => $pengembalianId,
-                    'pengiriman_id' => $validated['id_pengiriman'],
-                ]);
-            }
+            DB::table('pengembalian_pipa')
+                ->where('id', $pengembalianId)
+                ->update(['qty' => $totalQtyKembali]);
 
             DB::commit();
 
             return redirect()->route('pengiriman')->with('success', 'Pengembalian berhasil dibuat');
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Failed to create pengembalian', [
+            Log::error('Failed to create pengembalian', [
                 'error' => $e->getMessage(),
                 'pengiriman_id' => $validated['id_pengiriman'] ?? null,
             ]);
