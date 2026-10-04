@@ -1,30 +1,30 @@
 <script setup>
-import { NavBar, Cell, CellGroup, Empty } from 'vant'
-import { router } from '@inertiajs/vue3'
-import AppLayout from '@/layouts/AppLayout.vue'
+import { router } from '@inertiajs/vue3';
+import { NavBar, Cell, CellGroup, Empty } from 'vant';
+import AppLayout from '@/layouts/AppLayout.vue';
 
-const props = defineProps({
+defineProps({
     user: Object,
     assets: Array,
-})
+});
 
 const goBack = () => {
-    router.visit('/')
-}
+    router.visit('/');
+};
 </script>
 
 <template>
     <AppLayout>
-        <div class="h-dvh flex flex-col bg-gray-50">
+        <div class="flex h-dvh flex-col bg-gray-50">
             <!-- Header -->
-            <div class="bg-white flex-shrink-0">
+            <div class="flex-shrink-0 bg-white">
                 <NavBar title="Profile" left-arrow @click-left="goBack" />
             </div>
 
             <!-- Content -->
             <div class="flex-1 overflow-y-auto">
                 <!-- User Info -->
-                <div class="bg-white mb-4">
+                <div class="mb-4 bg-white">
                     <CellGroup inset>
                         <Cell title="Nama" :value="user.nama" />
                         <Cell title="Email" :value="user.email" />
@@ -34,14 +34,24 @@ const goBack = () => {
 
                 <!-- Assets Section -->
                 <div class="bg-white">
-                    <div class="px-4 py-3 border-b border-gray-100">
-                        <h3 class="text-lg font-semibold text-gray-700">Asset</h3>
+                    <div class="border-b border-gray-100 px-4 py-3">
+                        <h3 class="text-lg font-semibold text-gray-700">
+                            Asset
+                        </h3>
                     </div>
 
                     <div v-if="assets.length > 0" class="pb-20">
-                        <div v-for="asset in assets" :key="asset.id" class="border-b border-gray-100 last:border-b-0">
+                        <div
+                            v-for="asset in assets"
+                            :key="asset.id"
+                            class="border-b border-gray-100 last:border-b-0"
+                        >
                             <div class="p-4">
-                                <h4 class="font-semibold text-gray-900 text-base">{{ asset.nama }}</h4>
+                                <h4
+                                    class="text-base font-semibold text-gray-900"
+                                >
+                                    {{ asset.nama }}
+                                </h4>
                             </div>
                         </div>
                     </div>

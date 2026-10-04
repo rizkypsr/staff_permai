@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -45,7 +46,7 @@ class LoginRequest extends FormRequest
         $password = $this->string('password');
 
         // Find user by email or username
-        $user = \App\Models\User::query()
+        $user = User::query()
             ->when(filter_var($login, FILTER_VALIDATE_EMAIL), function ($query) use ($login) {
                 $query->where('email', $login);
             }, function ($query) use ($login) {

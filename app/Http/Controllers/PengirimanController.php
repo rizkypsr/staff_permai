@@ -61,7 +61,7 @@ class PengirimanController extends Controller
         $pengirimanPaginated->getCollection()->transform(function ($item) {
             // Get pengambilan pipa status for each item
             $pengambilanPipa = $this->getPengambilanPipaStatus($item->id);
-            
+
             return [
                 'id' => $item->id,
                 'no_transaksi' => $item->no_transaksi,
@@ -493,7 +493,7 @@ class PengirimanController extends Controller
             })
             ->exists();
 
-        if (!$pengiriman) {
+        if (! $pengiriman) {
             return null; // Pengiriman tidak memenuhi kriteria
         }
 
@@ -514,16 +514,16 @@ class PengirimanController extends Controller
 
     private function getPhoneNumber($pelanggan): string
     {
-        if (!$pelanggan) {
+        if (! $pelanggan) {
             return '-';
         }
 
         // Prioritas: no_hp dulu, jika null/kosong baru no_telp
-        if (!empty($pelanggan->no_hp)) {
+        if (! empty($pelanggan->no_hp)) {
             return $pelanggan->no_hp;
         }
 
-        if (!empty($pelanggan->no_telp)) {
+        if (! empty($pelanggan->no_telp)) {
             return $pelanggan->no_telp;
         }
 

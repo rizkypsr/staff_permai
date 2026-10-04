@@ -63,7 +63,10 @@
 .font-scaling-enabled h6,
 .font-scaling-enabled p,
 .font-scaling-enabled span,
-.font-scaling-enabled div:not([class*="w-"]):not([class*="h-"]):not([class*="flex"]):not([class*="grid"]):not(.font-scaling-ignore),
+.font-scaling-enabled
+    div:not([class*='w-']):not([class*='h-']):not([class*='flex']):not(
+        [class*='grid']
+    ):not(.font-scaling-ignore),
 .font-scaling-enabled button,
 .font-scaling-enabled input,
 .font-scaling-enabled textarea,

@@ -1,24 +1,28 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3'
-import { Field, CellGroup, Button } from 'vant'
+import { useForm } from '@inertiajs/vue3';
+import { Field, CellGroup, Button } from 'vant';
 
 const form = useForm({
     login: '',
     password: '',
-})
+});
 
 const submit = () => {
-    form.post('/login')
-}
+    form.post('/login');
+};
 </script>
 
 <template>
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
         <div class="w-full max-w-sm">
-            <div class="bg-white rounded-2xl shadow-lg p-4 sm:p-8">
-                <div class="text-center mb-6">
-                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Login</h2>
-                    <p class="text-xs sm:text-sm text-gray-600 mt-1">Masuk ke akun Anda</p>
+            <div class="rounded-2xl bg-white p-4 shadow-lg sm:p-8">
+                <div class="mb-6 text-center">
+                    <h2 class="text-xl font-bold text-gray-900 sm:text-2xl">
+                        Login
+                    </h2>
+                    <p class="mt-1 text-xs text-gray-600 sm:text-sm">
+                        Masuk ke akun Anda
+                    </p>
                 </div>
 
                 <form @submit.prevent="submit">

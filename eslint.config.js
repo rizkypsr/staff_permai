@@ -89,6 +89,26 @@ export default defineConfigWithVueTs(
             'resources/js/wayfinder/**',
         ],
     },
+    {
+        // Legacy pages still written in plain JS; new pages must use lang="ts".
+        files: [
+            'resources/js/layouts/AppLayout.vue',
+            'resources/js/pages/Auth/Login.vue',
+            'resources/js/pages/PengembalianCreate.vue',
+            'resources/js/pages/PengembalianDetail.vue',
+            'resources/js/pages/Pengiriman.vue',
+            'resources/js/pages/PengirimanCreate.vue',
+            'resources/js/pages/PengirimanDetail.vue',
+            'resources/js/pages/Profile.vue',
+            'resources/js/pages/RekapAbsensi.vue',
+            'resources/js/pages/Settings.vue',
+            'resources/js/pages/Stok.vue',
+            'resources/js/pages/Welcome.vue',
+        ],
+        rules: {
+            'vue/block-lang': 'off',
+        },
+    },
     prettier, // Turn off all rules that might conflict with Prettier
     {
         plugins: {

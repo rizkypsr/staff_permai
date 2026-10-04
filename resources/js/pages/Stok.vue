@@ -1,48 +1,52 @@
 <script setup>
-import { router, InfiniteScroll } from '@inertiajs/vue3'
-import { NavBar, List, PullRefresh, Cell, Empty, Search } from 'vant'
-import { ref, computed } from 'vue'
-import AppLayout from '@/layouts/AppLayout.vue'
+import { router, InfiniteScroll } from '@inertiajs/vue3';
+import { NavBar, List, PullRefresh, Cell, Empty, Search } from 'vant';
+import { ref, computed } from 'vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 
 const props = defineProps({
     auth: Object,
     stok: Object,
     search: String,
-})
+});
 
-const refreshing = ref(false)
-const searchValue = ref(props.search || '')
+const refreshing = ref(false);
+const searchValue = ref(props.search || '');
 
 const onRefresh = () => {
-    refreshing.value = true
+    refreshing.value = true;
     router.reload({
         preserveState: false,
         preserveScroll: false,
         onFinish: () => {
-            refreshing.value = false
+            refreshing.value = false;
         },
-    })
-}
+    });
+};
 
 const onSearch = () => {
-    router.get('/stok', { search: searchValue.value }, {
-        preserveState: false,
-        preserveScroll: false,
-        replace: true,
-    })
-}
+    router.get(
+        '/stok',
+        { search: searchValue.value },
+        {
+            preserveState: false,
+            preserveScroll: false,
+            replace: true,
+        },
+    );
+};
 
 const formatNumber = (num) => {
-    return new Intl.NumberFormat('id-ID').format(num)
-}
+    return new Intl.NumberFormat('id-ID').format(num);
+};
 
 const hasData = computed(() => {
-    return props.stok?.data && props.stok.data.length > 0
-})
+    return props.stok?.data && props.stok.data.length > 0;
+});
 
 const finished = computed(() => {
-    return !props.stok?.next_page_url
-})
+    return !props.stok?.next_page_url;
+});
 </script>
 
 <template>
@@ -51,21 +55,35 @@ const finished = computed(() => {
         <div class="sticky top-0 z-10 bg-white">
             <NavBar title="Stok Produk" />
             <div class="px-4 pb-3">
-                <Search v-model="searchValue" placeholder="Cari produk..." shape="round" @search="onSearch"
-                    @clear="onSearch" />
+                <Search
+                    v-model="searchValue"
+                    placeholder="Cari produk..."
+                    shape="round"
+                    @search="onSearch"
+                    @clear="onSearch"
+                />
             </div>
         </div>
 
         <!-- Main Content -->
         <PullRefresh v-model="refreshing" @refresh="onRefresh">
             <InfiniteScroll data="stok" v-slot="{ loading }">
-                <List :loading="loading" :finished="finished" finished-text="Tidak ada data lagi">
+                <List
+                    :loading="loading"
+                    :finished="finished"
+                    finished-text="Tidak ada data lagi"
+                >
                     <div v-if="hasData">
-                        <Cell v-for="item in stok.data" :key="item.id" :title="item.nama"
-                            label-class="text-xs text-gray-500">
+                        <Cell
+                            v-for="item in stok.data"
+                            :key="item.id"
+                            :title="item.nama"
+                            label-class="text-xs text-gray-500"
+                        >
                             <template #value>
-                                <div class="text-right stock-value">
-                                    {{ formatNumber(item.qty) }} {{ item.satuan }}
+                                <div class="stock-value text-right">
+                                    {{ formatNumber(item.qty) }}
+                                    {{ item.satuan }}
                                 </div>
                             </template>
                         </Cell>

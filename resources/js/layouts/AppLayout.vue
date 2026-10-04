@@ -1,61 +1,86 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
-import { Tabbar, TabbarItem } from 'vant'
+import { router } from '@inertiajs/vue3';
+import { Tabbar, TabbarItem } from 'vant';
+import { ref, onMounted } from 'vue';
 
-const props = defineProps({
+defineProps({
     auth: Object,
-})
+});
 
 // Get current route name from URL
 const getCurrentRoute = () => {
-    if (typeof window === 'undefined') return 'absensi'
-    
-    const path = window.location.pathname
-    if (path === '/' || path === '/absensi') return 'absensi'
-    if (path === '/pengiriman') return 'pengiriman'
-    if (path === '/stok') return 'stok'
-    return 'absensi'
-}
+    if (typeof window === 'undefined') {
+        return 'absensi';
+    }
+
+    const path = window.location.pathname;
+
+    if (path === '/' || path === '/absensi') {
+        return 'absensi';
+    }
+
+    if (path === '/pengiriman') {
+        return 'pengiriman';
+    }
+
+    if (path === '/stok') {
+        return 'stok';
+    }
+
+    return 'absensi';
+};
 
 // Initialize with server-safe defaults
-const shouldShowTabbar = ref(false)
-const active = ref('absensi')
-const isWelcomePage = ref(false)
+const shouldShowTabbar = ref(false);
+const active = ref('absensi');
+const isWelcomePage = ref(false);
 
 onMounted(() => {
     // Only access window after component is mounted
     if (typeof window !== 'undefined') {
-        active.value = getCurrentRoute()
-        
-        const path = window.location.pathname
-        shouldShowTabbar.value = path === '/' || path === '/pengiriman' || path === '/stok'
-        isWelcomePage.value = path === '/' || path === '/absensi'
+        active.value = getCurrentRoute();
+
+        const path = window.location.pathname;
+        shouldShowTabbar.value =
+            path === '/' || path === '/pengiriman' || path === '/stok';
+        isWelcomePage.value = path === '/' || path === '/absensi';
     }
-})
+});
 
 const onChange = (name) => {
-    active.value = name
+    active.value = name;
     const routes = {
         absensi: '/',
         pengiriman: '/pengiriman',
-        stok: '/stok'
-    }
-    router.visit(routes[name])
-}
+        stok: '/stok',
+    };
+    router.visit(routes[name]);
+};
 </script>
 
 <template>
-    <div class="h-dvh bg-gray-50 flex justify-center overflow-hidden">
+    <div class="flex h-dvh justify-center overflow-hidden bg-gray-50">
         <!-- Mobile-first container with max-width for desktop -->
-        <div class="w-full max-w-md bg-white h-full shadow-lg relative flex flex-col" :class="{ 'overflow-hidden': isWelcomePage }">
+        <div
+            class="relative flex h-full w-full max-w-md flex-col bg-white shadow-lg"
+            :class="{ 'overflow-hidden': isWelcomePage }"
+        >
             <!-- Main Content - conditional scroll behavior -->
-            <div class="flex-1" :class="{ 'overflow-hidden': isWelcomePage, 'overflow-y-auto': !isWelcomePage }">
+            <div
+                class="flex-1"
+                :class="{
+                    'overflow-hidden': isWelcomePage,
+                    'overflow-y-auto': !isWelcomePage,
+                }"
+            >
                 <slot />
             </div>
 
             <!-- Bottom Tabbar - only show on main pages -->
-            <div v-if="shouldShowTabbar" class="flex-shrink-0 bg-white border-t border-gray-200">
+            <div
+                v-if="shouldShowTabbar"
+                class="flex-shrink-0 border-t border-gray-200 bg-white"
+            >
                 <Tabbar
                     v-model="active"
                     active-color="#fec109"
@@ -69,9 +94,7 @@ const onChange = (name) => {
                     <TabbarItem name="pengiriman" icon="logistics">
                         Pengiriman
                     </TabbarItem>
-                    <TabbarItem name="stok" icon="records">
-                        Stok
-                    </TabbarItem>
+                    <TabbarItem name="stok" icon="records"> Stok </TabbarItem>
                 </Tabbar>
             </div>
         </div>

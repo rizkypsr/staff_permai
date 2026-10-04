@@ -1,129 +1,169 @@
 <script setup>
-import { useForm } from '@inertiajs/vue3'
-import { NavBar, Form, Field, CellGroup, Button, Picker, Popup, DatePicker, Stepper, showToast } from 'vant'
-import { ref, computed } from 'vue'
-import AppLayout from '@/layouts/AppLayout.vue'
+import { useForm } from '@inertiajs/vue3';
+import {
+    NavBar,
+    Form,
+    Field,
+    CellGroup,
+    Button,
+    Picker,
+    Popup,
+    DatePicker,
+    Stepper,
+    showToast,
+} from 'vant';
+import { ref, computed } from 'vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 
 const props = defineProps({
     auth: Object,
     pengirimanList: Array,
     latestPengiriman: Object,
-})
+});
 
-const showPengirimanPicker = ref(false)
-const showDatePicker = ref(false)
-const selectedPengiriman = ref(null)
-const pengirimanDetailList = ref([])
+const showPengirimanPicker = ref(false);
+const showDatePicker = ref(false);
+const selectedPengiriman = ref(null);
+const pengirimanDetailList = ref([]);
 
 const form = useForm({
     tgl: new Date(),
     id_pengiriman: props.latestPengiriman?.id || null,
     keterangan: props.latestPengiriman?.keterangan || '',
     produk: [],
-})
+});
 
 const pengirimanColumns = computed(() => {
-    return props.pengirimanList.map(p => ({
+    return props.pengirimanList.map((p) => ({
         text: p.kode,
         value: p.id,
-    }))
-})
+    }));
+});
 
 const loadPengirimanDetail = async (idPengiriman) => {
     try {
-        const response = await fetch(`/pengembalian/pengiriman/${idPengiriman}/detail`)
-        const data = await response.json()
-        pengirimanDetailList.value = data
-        
+        const response = await fetch(
+            `/pengembalian/pengiriman/${idPengiriman}/detail`,
+        );
+        const data = await response.json();
+        pengirimanDetailList.value = data;
+
         // Initialize produk array with qty_kembali = 0
-        form.produk = data.map(item => ({
+        form.produk = data.map((item) => ({
             id_produk: item.id_produk,
             id_satuan: item.id_satuan,
             satuan: item.satuan,
             qty_bawa: item.qty,
             qty_kembali: 0,
-        }))
+        }));
     } catch (error) {
-        console.error('Failed to load pengiriman detail:', error)
-        pengirimanDetailList.value = []
-        form.produk = []
+        console.error('Failed to load pengiriman detail:', error);
+        pengirimanDetailList.value = [];
+        form.produk = [];
     }
-}
+};
 
 // Calculate qty terpakai for each item
 const getQtyTerpakai = (index) => {
-    const produk = form.produk[index]
-    if (!produk) return 0
-    return produk.qty_bawa - produk.qty_kembali
-}
+    const produk = form.produk[index];
+
+    if (!produk) {
+        return 0;
+    }
+
+    return produk.qty_bawa - produk.qty_kembali;
+};
 
 // Auto-select from latest pengiriman if available
 if (props.latestPengiriman) {
     selectedPengiriman.value = {
         text: props.latestPengiriman.kode,
         value: props.latestPengiriman.id,
-    }
+    };
     // Load detail for latest pengiriman
-    loadPengirimanDetail(props.latestPengiriman.id)
+    loadPengirimanDetail(props.latestPengiriman.id);
 }
 
 const onConfirmPengiriman = ({ selectedOptions }) => {
-    const selected = props.pengirimanList.find(p => p.id === selectedOptions[0].value)
+    const selected = props.pengirimanList.find(
+        (p) => p.id === selectedOptions[0].value,
+    );
+
     if (selected) {
-        selectedPengiriman.value = selectedOptions[0]
-        form.id_pengiriman = selected.id
-        
+        selectedPengiriman.value = selectedOptions[0];
+        form.id_pengiriman = selected.id;
+
         // Update keterangan from selected pengiriman
-        form.keterangan = selected.keterangan || ''
-        
+        form.keterangan = selected.keterangan || '';
+
         // Load pengiriman detail
-        loadPengirimanDetail(selected.id)
+        loadPengirimanDetail(selected.id);
     }
-    showPengirimanPicker.value = false
-}
+
+    showPengirimanPicker.value = false;
+};
 
 const handlePengirimanClick = () => {
-    showPengirimanPicker.value = true
-}
+    showPengirimanPicker.value = true;
+};
 
 const handleDateClick = () => {
-    showDatePicker.value = true
-}
+    showDatePicker.value = true;
+};
 
 const onConfirmDate = ({ selectedValues }) => {
-    form.tgl = new Date(selectedValues[0], selectedValues[1] - 1, selectedValues[2])
-    showDatePicker.value = false
-}
+    form.tgl = new Date(
+        selectedValues[0],
+        selectedValues[1] - 1,
+        selectedValues[2],
+    );
+    showDatePicker.value = false;
+};
 
 const onCancelDate = () => {
-    showDatePicker.value = false
-}
+    showDatePicker.value = false;
+};
 
 const onCancelPengiriman = () => {
-    showPengirimanPicker.value = false
-}
+    showPengirimanPicker.value = false;
+};
 
 const formatDate = (date) => {
-    const d = new Date(date)
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
-    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
-}
+    const d = new Date(date);
+    const months = [
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember',
+    ];
+
+    return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+};
 
 const handleSubmit = () => {
     // Validate: at least one product must have qty_kembali > 0
-    const hasQtyKembali = form.produk.some(p => p.qty_kembali > 0)
-    
+    const hasQtyKembali = form.produk.some((p) => p.qty_kembali > 0);
+
     if (!hasQtyKembali) {
         showToast({
             message: 'Minimal harus ada 1 produk yang dikembalikan',
             position: 'top',
             wordBreak: 'break-word',
-        })
-        return
+        });
+
+        return;
     }
-    
+
     // Format date to Y-m-d
-    const tglFormatted = form.tgl.toISOString().split('T')[0]
+    const tglFormatted = form.tgl.toISOString().split('T')[0];
 
     // Submit data
     form.transform((data) => ({
@@ -136,83 +176,119 @@ const handleSubmit = () => {
                 type: 'success',
                 position: 'top',
                 wordBreak: 'break-word',
-            })
+            });
         },
         onError: (errors) => {
-            console.error('Submit error:', errors)
+            console.error('Submit error:', errors);
             showToast({
                 message: 'Gagal membuat pengembalian',
                 position: 'top',
                 wordBreak: 'break-word',
-            })
+            });
         },
-    })
-}
+    });
+};
 
 const pengirimanText = computed(() => {
-    return selectedPengiriman.value ? selectedPengiriman.value.text : ''
-})
+    return selectedPengiriman.value ? selectedPengiriman.value.text : '';
+});
 
 const isFormValid = computed(() => {
-    return form.tgl && form.id_pengiriman
-})
+    return form.tgl && form.id_pengiriman;
+});
 </script>
 
 <template>
     <AppLayout>
         <div class="sticky top-0 z-10 bg-white">
-            <NavBar title="Tambah Pengembalian" left-arrow @click-left="$inertia.visit('/pengiriman')" />
+            <NavBar
+                title="Tambah Pengembalian"
+                left-arrow
+                @click-left="$inertia.visit('/pengiriman')"
+            />
         </div>
 
         <div class="pb-24">
             <Form>
                 <CellGroup inset>
-                    <Field :model-value="formatDate(form.tgl)" is-link readonly label="Tgl. Pengembalian"
-                        placeholder="Pilih tanggal" required @click="handleDateClick" />
-                    <Field :model-value="pengirimanText" is-link readonly label="No. Pengiriman"
-                        placeholder="Pilih no. pengiriman" required @click="handlePengirimanClick" />
-                    <Field v-model="form.keterangan" label="Keterangan" type="textarea"
-                        placeholder="Masukkan keterangan" rows="3" autosize />
+                    <Field
+                        :model-value="formatDate(form.tgl)"
+                        is-link
+                        readonly
+                        label="Tgl. Pengembalian"
+                        placeholder="Pilih tanggal"
+                        required
+                        @click="handleDateClick"
+                    />
+                    <Field
+                        :model-value="pengirimanText"
+                        is-link
+                        readonly
+                        label="No. Pengiriman"
+                        placeholder="Pilih no. pengiriman"
+                        required
+                        @click="handlePengirimanClick"
+                    />
+                    <Field
+                        v-model="form.keterangan"
+                        label="Keterangan"
+                        type="textarea"
+                        placeholder="Masukkan keterangan"
+                        rows="3"
+                        autosize
+                    />
                 </CellGroup>
             </Form>
 
             <!-- Pengiriman Detail List -->
             <div v-if="pengirimanDetailList.length > 0" class="mt-4">
-                <div class="px-4 py-2 bg-gray-100 font-semibold text-sm">
+                <div class="bg-gray-100 px-4 py-2 text-sm font-semibold">
                     Detail Produk Pengiriman
                 </div>
                 <div class="bg-white">
-                    <div v-for="(item, index) in pengirimanDetailList" :key="item.id" class="border-b border-gray-200 p-4">
+                    <div
+                        v-for="(item, index) in pengirimanDetailList"
+                        :key="item.id"
+                        class="border-b border-gray-200 p-4"
+                    >
                         <!-- Product Name -->
-                        <div class="font-semibold text-sm mb-2">
+                        <div class="mb-2 text-sm font-semibold">
                             {{ item.nama_produk }}
                         </div>
-                        
+
                         <!-- Satuan -->
-                        <div class="text-xs text-gray-600 mb-3">
+                        <div class="mb-3 text-xs text-gray-600">
                             Satuan: {{ item.satuan }}
                         </div>
-                        
+
                         <!-- Qty Info Vertical Layout -->
                         <div class="space-y-3">
                             <!-- Jumlah Dibawa -->
-                            <div class="flex justify-between items-center">
-                                <div class="text-sm text-gray-600">Jml. Dibawa</div>
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-600">
+                                    Jml. Dibawa
+                                </div>
                                 <div class="font-semibold">{{ item.qty }}</div>
                             </div>
-                            
+
                             <!-- Jumlah Terpakai (Calculated) -->
-                            <div class="flex justify-between items-center">
-                                <div class="text-sm text-gray-600">Jml. Terpakai</div>
-                                <div class="font-semibold">{{ getQtyTerpakai(index) }}</div>
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-600">
+                                    Jml. Terpakai
+                                </div>
+                                <div class="font-semibold">
+                                    {{ getQtyTerpakai(index) }}
+                                </div>
                             </div>
-                            
+
                             <!-- Jumlah Dikembalikan (Input) -->
-                            <div class="flex justify-between items-center">
-                                <div class="text-sm text-gray-600">Jml. Dikembalikan</div>
-                                <Stepper 
-                                    v-model="form.produk[index].qty_kembali" 
-                                    :min="0" 
+                            <div class="flex items-center justify-between">
+                                <div class="text-sm text-gray-600">
+                                    Jml. Dikembalikan
+                                </div>
+                                <Stepper
+                                    v-model="form.produk[index].qty_kembali"
+                                    :min="0"
                                     :max="item.qty"
                                     input-width="50px"
                                     button-size="24px"
@@ -225,21 +301,54 @@ const isFormValid = computed(() => {
         </div>
 
         <!-- Bottom Button - Fixed at bottom like tabbar -->
-        <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4">
-            <Button type="primary" block round size="large" @click="handleSubmit" :disabled="!isFormValid"
-                :loading="form.processing" loading-type="spinner">
+        <div
+            class="fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 border-t border-gray-200 bg-white p-4"
+        >
+            <Button
+                type="primary"
+                block
+                round
+                size="large"
+                @click="handleSubmit"
+                :disabled="!isFormValid"
+                :loading="form.processing"
+                loading-type="spinner"
+            >
                 Simpan
             </Button>
         </div>
 
-        <Popup :show="showDatePicker" position="center" round :style="{ width: '90%' }" @click-overlay="onCancelDate">
-            <DatePicker :model-value="[form.tgl.getFullYear(), form.tgl.getMonth() + 1, form.tgl.getDate()]"
-                title="Pilih Tanggal" @confirm="onConfirmDate" @cancel="onCancelDate" />
+        <Popup
+            :show="showDatePicker"
+            position="center"
+            round
+            :style="{ width: '90%' }"
+            @click-overlay="onCancelDate"
+        >
+            <DatePicker
+                :model-value="[
+                    form.tgl.getFullYear(),
+                    form.tgl.getMonth() + 1,
+                    form.tgl.getDate(),
+                ]"
+                title="Pilih Tanggal"
+                @confirm="onConfirmDate"
+                @cancel="onCancelDate"
+            />
         </Popup>
 
-        <Popup :show="showPengirimanPicker" position="center" round :style="{ width: '90%' }"
-            @click-overlay="onCancelPengiriman">
-            <Picker :columns="pengirimanColumns" @confirm="onConfirmPengiriman" @cancel="onCancelPengiriman" />
+        <Popup
+            :show="showPengirimanPicker"
+            position="center"
+            round
+            :style="{ width: '90%' }"
+            @click-overlay="onCancelPengiriman"
+        >
+            <Picker
+                :columns="pengirimanColumns"
+                @confirm="onConfirmPengiriman"
+                @cancel="onCancelPengiriman"
+            />
         </Popup>
     </AppLayout>
 </template>

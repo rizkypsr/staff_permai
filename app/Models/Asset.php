@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Carbon\Carbon;
 
 class Asset extends Model
 {
@@ -49,17 +49,17 @@ class Asset extends Model
 
     public function getUsiaAttribute(): string
     {
-        if (!$this->tgl_pembelian) {
+        if (! $this->tgl_pembelian) {
             return '-';
         }
 
         $diff = Carbon::parse($this->tgl_pembelian)->diff(Carbon::now());
-        
+
         if ($diff->y > 0) {
-            return $diff->y . ' tahun ' . $diff->m . ' bulan';
+            return $diff->y.' tahun '.$diff->m.' bulan';
         }
-        
-        return $diff->m . ' bulan';
+
+        return $diff->m.' bulan';
     }
 
     public function scopeForUser($query, $userId)

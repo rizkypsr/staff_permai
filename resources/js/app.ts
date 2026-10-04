@@ -11,31 +11,35 @@ const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 // Initialize font size from localStorage
 const initializeFontSize = () => {
-    const savedFontSize = localStorage.getItem('app-font-size')
+    const savedFontSize = localStorage.getItem('app-font-size');
+
     if (savedFontSize) {
         // Font size options with updated scales
         const fontSizeOptions: Record<string, number> = {
-            'small': 1.0,      // Kecil (baseline)
-            'normal': 1.03,    // Normal 
-            'medium': 1.06,    // Besar
-            'large': 1.1,      // Lebih Besar
-        }
-        
-        const scale = fontSizeOptions[savedFontSize] || 1.0
+            small: 1.0, // Kecil (baseline)
+            normal: 1.03, // Normal
+            medium: 1.06, // Besar
+            large: 1.1, // Lebih Besar
+        };
+
+        const scale = fontSizeOptions[savedFontSize] || 1.0;
         // Apply font scaling using CSS custom property
-        document.documentElement.style.setProperty('--font-scale', scale.toString())
-        
+        document.documentElement.style.setProperty(
+            '--font-scale',
+            scale.toString(),
+        );
+
         // Add CSS class to enable font scaling
-        document.documentElement.classList.add('font-scaling-enabled')
+        document.documentElement.classList.add('font-scaling-enabled');
     }
-}
+};
 
 // Initialize font size when DOM is ready
 if (typeof window !== 'undefined') {
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeFontSize)
+        document.addEventListener('DOMContentLoaded', initializeFontSize);
     } else {
-        initializeFontSize()
+        initializeFontSize();
     }
 }
 
