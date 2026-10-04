@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { NavBar, Icon, Button, Tab, Tabs, Cell, CellGroup, Empty, showToast, showConfirmDialog, Popover } from 'vant'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { index as utangIndex } from '@/routes/utang'
 
 const props = defineProps({
     auth: Object,
@@ -45,6 +46,7 @@ const showPopover = ref(false)
 const menuActions = [
     { text: 'Profile', icon: 'user-o' },
     { text: 'Rekap Absensi', icon: 'calendar-o' },
+    { text: 'Utang', icon: 'balance-o' },
     { text: 'Pengaturan', icon: 'setting-o' },
     { text: 'Logout', icon: 'sign' },
 ]
@@ -107,6 +109,8 @@ const handleMenuClick = (action) => {
         router.visit('/profile')
     } else if (action.text === 'Rekap Absensi') {
         router.visit('/rekap-absensi')
+    } else if (action.text === 'Utang') {
+        router.visit(utangIndex().url)
     } else if (action.text === 'Pengaturan') {
         router.visit('/settings')
     } else if (action.text === 'Logout') {

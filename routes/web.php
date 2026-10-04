@@ -8,6 +8,7 @@ use App\Http\Controllers\PengirimanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekapAbsensiController;
 use App\Http\Controllers\StokController;
+use App\Http\Controllers\UtangPengajuanController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -30,6 +31,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/pengembalian/pengiriman/{id}/detail', [PengembalianController::class, 'getPengirimanDetail'])->name('pengembalian.pengiriman.detail');
     Route::post('/pengembalian', [PengembalianController::class, 'store'])->name('pengembalian.store');
     Route::get('/stok', [StokController::class, 'index'])->name('stok');
+    Route::get('/utang', [UtangPengajuanController::class, 'index'])->name('utang.index');
+    Route::get('/utang/ajukan', [UtangPengajuanController::class, 'create'])->name('utang.create');
+    Route::post('/utang', [UtangPengajuanController::class, 'store'])->name('utang.store');
+    Route::delete('/utang/{id}', [UtangPengajuanController::class, 'destroy'])->whereNumber('id')->name('utang.destroy');
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     Route::inertia('/settings', 'Settings')->name('settings');
 });
