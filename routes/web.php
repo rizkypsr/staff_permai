@@ -3,6 +3,7 @@
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PenagihanController;
 use App\Http\Controllers\PengembalianController;
 use App\Http\Controllers\PengirimanController;
 use App\Http\Controllers\ProfileController;
@@ -35,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/utang/ajukan', [UtangPengajuanController::class, 'create'])->name('utang.create');
     Route::post('/utang', [UtangPengajuanController::class, 'store'])->name('utang.store');
     Route::delete('/utang/{id}', [UtangPengajuanController::class, 'destroy'])->whereNumber('id')->name('utang.destroy');
+    Route::get('/penagihan', [PenagihanController::class, 'index'])->name('penagihan.index');
+    Route::get('/penagihan/{id}', [PenagihanController::class, 'show'])->whereNumber('id')->name('penagihan.show');
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     Route::inertia('/settings', 'Settings')->name('settings');
 });
