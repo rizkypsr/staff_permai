@@ -21,6 +21,15 @@ interface Nota {
     tgl_selesai: string | null;
 }
 
+interface KelompokPelanggan {
+    nama_pelanggan: string;
+    jumlah_nota: number;
+    nota_selesai: number;
+    sisa_tagihan: number;
+    sisa_sekarang: number;
+    nota: Nota[];
+}
+
 const props = defineProps<{
     penagihan: {
         id: number;
@@ -30,6 +39,7 @@ const props = defineProps<{
         keterangan: string;
     };
     nota: Nota[];
+    kelompok: KelompokPelanggan[];
     total: {
         sisa_tagihan: number;
         sisa_sekarang: number;
@@ -99,89 +109,152 @@ const telLink = (nomor: string): string =>
 
                     <div v-if="nota.length > 0" class="flex flex-col gap-3">
                         <div
-                            v-for="item in nota"
-                            :key="item.id"
-                            class="rounded-lg bg-white p-4 shadow-sm"
+                            v-for="(grup, urutanGrup) in kelompok"
+                            :key="urutanGrup"
+                            class="flex flex-col gap-2"
+                            :class="{
+                                'rounded-xl border border-gray-200 p-2':
+                                    grup.jumlah_nota > 1,
+                            }"
                         >
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <div class="font-semibold text-gray-900">
-                                        {{ item.no_nota }}
-                                    </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ item.tgl_nota }}
-                                    </div>
-                                </div>
+                            <div
+                                v-for="item in grup.nota"
+                                :key="item.id"
+                                class="rounded-lg bg-white p-4 shadow-sm"
+                            >
                                 <div
-                                    class="flex shrink-0 flex-col items-end gap-1"
+                                    class="flex items-start justify-between gap-2"
                                 >
-                                    <Tag
-                                        v-if="item.selesai"
-                                        type="success"
-                                        size="medium"
+                                    <div class="min-w-0">
+                                        <div
+                                            class="font-semibold text-gray-900"
+                                        >
+                                            {{ item.no_nota }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ item.tgl_nota }}
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="flex shrink-0 flex-col items-end gap-1"
                                     >
-                                        Selesai
-                                        <template v-if="item.tgl_selesai">
-                                            · {{ item.tgl_selesai }}
-                                        </template>
-                                    </Tag>
-                                    <Tag v-else type="default" size="medium">
-                                        Belum
-                                    </Tag>
-                                    <Tag
-                                        v-if="item.lunas"
-                                        type="primary"
-                                        plain
-                                        size="medium"
-                                    >
-                                        Lunas
-                                    </Tag>
+                                        <Tag
+                                            v-if="item.selesai"
+                                            type="success"
+                                            size="medium"
+                                        >
+                                            Selesai
+                                            <template v-if="item.tgl_selesai">
+                                                · {{ item.tgl_selesai }}
+                                            </template>
+                                        </Tag>
+                                        <Tag
+                                            v-else
+                                            type="default"
+                                            size="medium"
+                                        >
+                                            Belum
+                                        </Tag>
+                                        <Tag
+                                            v-if="item.lunas"
+                                            type="primary"
+                                            plain
+                                            size="medium"
+                                        >
+                                            Lunas
+                                        </Tag>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="mt-3 space-y-1 text-sm">
-                                <div class="font-medium text-gray-900">
-                                    {{ item.nama_pelanggan || '-' }}
+                                <div class="mt-3 space-y-1 text-sm">
+                                    <div class="font-medium text-gray-900">
+                                        {{ item.nama_pelanggan || '-' }}
+                                    </div>
+                                    <div class="break-words text-gray-600">
+                                        {{ item.alamat || '-' }}
+                                    </div>
+                                    <a
+                                        v-if="item.no_telp"
+                                        :href="telLink(item.no_telp)"
+                                        class="inline-block font-medium text-blue-600"
+                                    >
+                                        {{ item.no_telp }}
+                                    </a>
+                                    <div v-else class="text-gray-400">
+                                        Tidak ada telepon
+                                    </div>
                                 </div>
-                                <div class="break-words text-gray-600">
-                                    {{ item.alamat || '-' }}
-                                </div>
-                                <a
-                                    v-if="item.no_telp"
-                                    :href="telLink(item.no_telp)"
-                                    class="inline-block font-medium text-blue-600"
+
+                                <div
+                                    class="mt-3 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3 text-sm"
                                 >
-                                    {{ item.no_telp }}
-                                </a>
-                                <div v-else class="text-gray-400">
-                                    Tidak ada telepon
+                                    <div>
+                                        <div class="text-xs text-gray-500">
+                                            Sisa saat ditugaskan
+                                        </div>
+                                        <div class="font-medium text-gray-900">
+                                            {{ rupiah(item.sisa_tagihan) }}
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xs text-gray-500">
+                                            Sisa sekarang
+                                        </div>
+                                        <div
+                                            class="font-semibold"
+                                            :class="
+                                                item.lunas
+                                                    ? 'text-green-600'
+                                                    : 'text-amber-600'
+                                            "
+                                        >
+                                            {{ rupiah(item.sisa_sekarang) }}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <div
-                                class="mt-3 grid grid-cols-2 gap-2 border-t border-gray-100 pt-3 text-sm"
+                                v-if="grup.jumlah_nota > 1"
+                                class="rounded-lg bg-gray-100 px-4 py-3 text-sm"
                             >
-                                <div>
-                                    <div class="text-xs text-gray-500">
-                                        Sisa saat ditugaskan
+                                <div
+                                    class="flex items-baseline justify-between gap-2"
+                                >
+                                    <div
+                                        class="min-w-0 truncate font-semibold text-gray-900"
+                                    >
+                                        Subtotal
+                                        {{ grup.nama_pelanggan || '-' }}
                                     </div>
-                                    <div class="font-medium text-gray-900">
-                                        {{ rupiah(item.sisa_tagihan) }}
+                                    <div class="shrink-0 text-xs text-gray-500">
+                                        {{ grup.jumlah_nota }} nota ·
+                                        {{ grup.nota_selesai }}/{{
+                                            grup.jumlah_nota
+                                        }}
+                                        selesai
                                     </div>
                                 </div>
-                                <div class="text-right">
-                                    <div class="text-xs text-gray-500">
-                                        Sisa sekarang
+                                <div class="mt-2 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <div class="text-xs text-gray-500">
+                                            Saat ditugaskan
+                                        </div>
+                                        <div
+                                            class="font-semibold text-gray-900"
+                                        >
+                                            {{ rupiah(grup.sisa_tagihan) }}
+                                        </div>
                                     </div>
-                                    <div
-                                        class="font-semibold"
-                                        :class="
-                                            item.lunas
-                                                ? 'text-green-600'
-                                                : 'text-amber-600'
-                                        "
-                                    >
-                                        {{ rupiah(item.sisa_sekarang) }}
+                                    <div class="text-right">
+                                        <div class="text-xs text-gray-500">
+                                            Sisa sekarang
+                                        </div>
+                                        <div
+                                            class="font-semibold text-amber-600"
+                                        >
+                                            {{ rupiah(grup.sisa_sekarang) }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

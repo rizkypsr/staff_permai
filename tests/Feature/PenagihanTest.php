@@ -321,3 +321,46 @@ it('shows each note\'s finished status and date separately from paid status', fu
             ->where('nota.1.lunas', true)
         );
 });
+
+it('groups notes by displayed customer name in first-appearance order', function () {
+    $kurir = buatKurir();
+    $id = buatPenagihan($kurir);
+
+    $ptA = DB::table('pelanggan')->insertGetId(['nama' => 'PT A', 'alamat' => '', 'no_telp' => '', 'no_hp' => '']);
+    $ptB = DB::table('pelanggan')->insertGetId(['nama' => 'PT B', 'alamat' => '', 'no_telp' => '', 'no_hp' => '']);
+
+    $a1 = buatFaktur(['no_transaksi' => 'A-1', 'id_pelanggan' => $ptA, 'grand_total' => 100000]);
+    $b1 = buatFaktur(['no_transaksi' => 'B-1', 'id_pelanggan' => $ptB, 'grand_total' => 50000]);
+    $a2 = buatFaktur(['no_transaksi' => 'A-2', 'id_pelanggan' => $ptA, 'nama_pelanggan' => '  pt a ', 'grand_total' => 100000]);
+    $cash = DB::table('pelanggan')->insertGetId(['nama' => 'Cash', 'alamat' => '', 'no_telp' => '', 'no_hp' => '']);
+    $cashBudi = buatFaktur(['no_transaksi' => 'C-1', 'id_pelanggan' => $cash, 'nama_pelanggan' => 'Budi', 'grand_total' => 30000]);
+    $cashSiti = buatFaktur(['no_transaksi' => 'C-2', 'id_pelanggan' => $cash, 'nama_pelanggan' => 'Siti', 'grand_total' => 20000]);
+    DB::table('pembayaran_faktur')->insert(['id_faktur' => $a2, 'nominal' => 40000, 'row_status' => 1]);
+
+    tambahNota($id, $a1, 100000, 1, tglSelesai: '2026-10-05');
+    tambahNota($id, $b1, 50000, 2);
+    tambahNota($id, $cashBudi, 30000, 3);
+    tambahNota($id, $a2, 100000, 4);
+    tambahNota($id, $cashSiti, 20000, 5);
+
+    $this->actingAs($kurir)
+        ->get(route('penagihan.show', $id))
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('kelompok', 4)
+            ->where('kelompok.0.nama_pelanggan', 'PT A')
+            ->where('kelompok.0.jumlah_nota', 2)
+            ->where('kelompok.0.nota_selesai', 1)
+            ->where('kelompok.0.sisa_tagihan', 200000)
+            ->where('kelompok.0.sisa_sekarang', 160000)
+            ->where('kelompok.0.nota.0.no_nota', 'A-1')
+            ->where('kelompok.0.nota.1.no_nota', 'A-2')
+            ->where('kelompok.1.nama_pelanggan', 'PT B')
+            ->where('kelompok.1.jumlah_nota', 1)
+            ->where('kelompok.1.sisa_tagihan', 50000)
+            ->where('kelompok.2.nama_pelanggan', 'Budi')
+            ->where('kelompok.2.nota.0.no_nota', 'C-1')
+            ->where('kelompok.3.nama_pelanggan', 'Siti')
+            ->where('total.sisa_tagihan', 300000)
+            ->where('total.sisa_sekarang', 260000)
+        );
+});

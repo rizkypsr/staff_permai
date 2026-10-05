@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -143,11 +144,36 @@ class PenagihanController extends Controller
                 'keterangan' => $penagihan->keterangan,
             ],
             'nota' => $nota,
+            'kelompok' => $this->kelompokkanPerPelanggan($nota),
             'total' => [
                 'sisa_tagihan' => $nota->sum('sisa_tagihan'),
                 'sisa_sekarang' => $nota->sum(fn (array $item): int => max($item['sisa_sekarang'], 0)),
             ],
         ]);
+    }
+
+    /**
+     * Kelompokkan nota per nama pelanggan yang tampil (trim, tanpa beda huruf besar/kecil),
+     * bukan per id_pelanggan: nota atas pelanggan umum "Cash" berisi pembeli berbeda.
+     * Urutan kelompok mengikuti kemunculan pertama; nota di dalamnya tetap urut.
+     *
+     * @param  Collection<int, array<string, mixed>>  $nota
+     * @return list<array{nama_pelanggan: string, jumlah_nota: int, nota_selesai: int, sisa_tagihan: int, sisa_sekarang: int, nota: list<array<string, mixed>>}>
+     */
+    private function kelompokkanPerPelanggan(Collection $nota): array
+    {
+        return $nota
+            ->groupBy(fn (array $item): string => mb_strtolower(trim($item['nama_pelanggan'])))
+            ->map(fn (Collection $isi): array => [
+                'nama_pelanggan' => $isi->first()['nama_pelanggan'],
+                'jumlah_nota' => $isi->count(),
+                'nota_selesai' => $isi->where('selesai', true)->count(),
+                'sisa_tagihan' => $isi->sum('sisa_tagihan'),
+                'sisa_sekarang' => $isi->sum(fn (array $item): int => max($item['sisa_sekarang'], 0)),
+                'nota' => $isi->values()->all(),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
