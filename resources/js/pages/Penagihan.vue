@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3';
-import { Empty, Icon, NavBar, Tag } from 'vant';
+import { Empty, Icon, NavBar, Progress, Tag } from 'vant';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { home } from '@/routes';
 import { show } from '@/routes/penagihan';
@@ -14,6 +14,7 @@ interface Tugas {
     status: StatusPenagihan;
     keterangan: string;
     jumlah_nota: number;
+    nota_selesai: number;
     total_tagihan: number;
 }
 
@@ -22,6 +23,7 @@ defineProps<{
     ringkasan: {
         jumlah_dalam_penagihan: number;
         total_dalam_penagihan: number;
+        nota_belum_selesai: number;
     };
 }>();
 
@@ -55,6 +57,13 @@ const rupiah = (nilai: number): string => `Rp ${nilai.toLocaleString('id-ID')}`;
                         </div>
                         <div class="mt-1 text-lg font-semibold text-gray-900">
                             {{ ringkasan.jumlah_dalam_penagihan }}
+                        </div>
+                        <div
+                            v-if="ringkasan.nota_belum_selesai > 0"
+                            class="text-xs text-gray-500"
+                        >
+                            {{ ringkasan.nota_belum_selesai }} nota belum
+                            selesai
                         </div>
                     </div>
                     <div class="rounded-lg bg-white p-3 shadow-sm">
@@ -107,7 +116,10 @@ const rupiah = (nilai: number): string => `Rp ${nilai.toLocaleString('id-ID')}`;
                                 class="mt-3 flex items-center justify-between text-sm"
                             >
                                 <span class="text-gray-500">
-                                    {{ item.jumlah_nota }} nota
+                                    {{ item.nota_selesai }}/{{
+                                        item.jumlah_nota
+                                    }}
+                                    nota selesai
                                 </span>
                                 <span
                                     class="flex items-center gap-1 font-semibold text-gray-900"
@@ -116,6 +128,20 @@ const rupiah = (nilai: number): string => `Rp ${nilai.toLocaleString('id-ID')}`;
                                     <Icon name="arrow" class="text-gray-400" />
                                 </span>
                             </div>
+
+                            <Progress
+                                v-if="item.jumlah_nota > 0"
+                                class="mt-2"
+                                :percentage="
+                                    Math.round(
+                                        (item.nota_selesai / item.jumlah_nota) *
+                                            100,
+                                    )
+                                "
+                                :show-pivot="false"
+                                stroke-width="6"
+                                color="#22c55e"
+                            />
                         </Link>
                     </div>
 

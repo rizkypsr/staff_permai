@@ -11,7 +11,8 @@ use Inertia\Response;
 
 /**
  * Rekap tugas penagihan milik kurir yang login (hanya baca).
- * Tugas dibuat dan diselesaikan di web admin; pembayaran juga dicatat di sana.
+ * Tugas dibuat di web admin dan ditandai selesai per nota di sana; penagihan.status
+ * diatur otomatis oleh web admin. Pembayaran juga dicatat di sana.
  */
 class PenagihanController extends Controller
 {
@@ -26,6 +27,7 @@ class PenagihanController extends Controller
         $ringkasanDetail = $this->detailAktif()
             ->select('pd.id_penagihan')
             ->selectRaw('COUNT(*) AS jumlah_nota')
+            ->selectRaw('SUM(CASE WHEN pd.status = ? THEN 1 ELSE 0 END) AS nota_selesai', [self::STATUS_SELESAI])
             ->selectRaw('SUM(pd.sisa_tagihan) AS total_tagihan')
             ->groupBy('pd.id_penagihan');
 
@@ -42,6 +44,7 @@ class PenagihanController extends Controller
                 'p.status',
                 'p.keterangan',
                 'rd.jumlah_nota',
+                'rd.nota_selesai',
                 'rd.total_tagihan',
             ])
             ->map(fn (object $row): array => [
@@ -52,6 +55,7 @@ class PenagihanController extends Controller
                 'status' => (int) $row->status,
                 'keterangan' => $row->keterangan,
                 'jumlah_nota' => (int) $row->jumlah_nota,
+                'nota_selesai' => (int) $row->nota_selesai,
                 'total_tagihan' => (int) $row->total_tagihan,
             ]);
 
@@ -62,6 +66,9 @@ class PenagihanController extends Controller
             'ringkasan' => [
                 'jumlah_dalam_penagihan' => $dalamPenagihan->count(),
                 'total_dalam_penagihan' => $dalamPenagihan->sum('total_tagihan'),
+                'nota_belum_selesai' => $dalamPenagihan->sum(
+                    fn (array $item): int => $item['jumlah_nota'] - $item['nota_selesai']
+                ),
             ],
         ]);
     }
@@ -93,6 +100,8 @@ class PenagihanController extends Controller
             ->get([
                 'pd.id',
                 'pd.sisa_tagihan',
+                'pd.status',
+                'pd.tgl_selesai',
                 'f.no_transaksi',
                 'f.tgl',
                 'f.grand_total',
@@ -118,6 +127,10 @@ class PenagihanController extends Controller
                     'sisa_tagihan' => (int) $row->sisa_tagihan,
                     'sisa_sekarang' => $sisaSekarang,
                     'lunas' => $sisaSekarang <= 0,
+                    'selesai' => (int) $row->status === self::STATUS_SELESAI,
+                    'tgl_selesai' => $row->tgl_selesai
+                        ? Carbon::parse($row->tgl_selesai)->translatedFormat('d M Y')
+                        : null,
                 ];
             });
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { Empty, NavBar, Tag } from 'vant';
+import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { index } from '@/routes/penagihan';
 
@@ -16,9 +17,11 @@ interface Nota {
     sisa_tagihan: number;
     sisa_sekarang: number;
     lunas: boolean;
+    selesai: boolean;
+    tgl_selesai: string | null;
 }
 
-defineProps<{
+const props = defineProps<{
     penagihan: {
         id: number;
         no_transaksi: string;
@@ -42,6 +45,10 @@ const statusTag: Record<
 };
 
 const rupiah = (nilai: number): string => `Rp ${nilai.toLocaleString('id-ID')}`;
+
+const notaSelesai = computed(
+    () => props.nota.filter((item) => item.selesai).length,
+);
 
 const telLink = (nomor: string): string =>
     `tel:${nomor.replace(/[^\d+]/g, '')}`;
@@ -86,7 +93,8 @@ const telLink = (nomor: string): string =>
 
                 <div>
                     <h3 class="mb-2 px-1 font-semibold text-gray-700">
-                        Daftar Nota ({{ nota.length }})
+                        Daftar Nota ({{ notaSelesai }}/{{ nota.length }}
+                        selesai)
                     </h3>
 
                     <div v-if="nota.length > 0" class="flex flex-col gap-3">
@@ -104,13 +112,31 @@ const telLink = (nomor: string): string =>
                                         {{ item.tgl_nota }}
                                     </div>
                                 </div>
-                                <Tag
-                                    v-if="item.lunas"
-                                    type="success"
-                                    size="medium"
+                                <div
+                                    class="flex shrink-0 flex-col items-end gap-1"
                                 >
-                                    Lunas
-                                </Tag>
+                                    <Tag
+                                        v-if="item.selesai"
+                                        type="success"
+                                        size="medium"
+                                    >
+                                        Selesai
+                                        <template v-if="item.tgl_selesai">
+                                            · {{ item.tgl_selesai }}
+                                        </template>
+                                    </Tag>
+                                    <Tag v-else type="default" size="medium">
+                                        Belum
+                                    </Tag>
+                                    <Tag
+                                        v-if="item.lunas"
+                                        type="primary"
+                                        plain
+                                        size="medium"
+                                    >
+                                        Lunas
+                                    </Tag>
+                                </div>
                             </div>
 
                             <div class="mt-3 space-y-1 text-sm">

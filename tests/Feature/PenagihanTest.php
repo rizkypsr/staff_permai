@@ -67,6 +67,10 @@ function buatSkemaPenagihan(): void
         $table->integer('id_faktur');
         $table->integer('urutan')->default(1);
         $table->bigInteger('sisa_tagihan')->default(0);
+        $table->tinyInteger('status')->default(0);
+        $table->date('tgl_selesai')->nullable();
+        $table->dateTime('selesai_at')->nullable();
+        $table->integer('selesai_by')->nullable();
         $table->boolean('row_status')->default(true);
     });
 }
@@ -111,13 +115,21 @@ function buatFaktur(array $atribut = []): int
     ]);
 }
 
-function tambahNota(int $idPenagihan, int $idFaktur, int $sisaTagihan, int $urutan = 1, int $rowStatus = 1): void
-{
+function tambahNota(
+    int $idPenagihan,
+    int $idFaktur,
+    int $sisaTagihan,
+    int $urutan = 1,
+    int $rowStatus = 1,
+    ?string $tglSelesai = null,
+): void {
     DB::table('penagihan_detail')->insert([
         'id_penagihan' => $idPenagihan,
         'id_faktur' => $idFaktur,
         'urutan' => $urutan,
         'sisa_tagihan' => $sisaTagihan,
+        'status' => $tglSelesai === null ? 0 : 1,
+        'tgl_selesai' => $tglSelesai,
         'row_status' => $rowStatus,
     ]);
 }
@@ -249,5 +261,63 @@ it('uses the invoice contact snapshot and falls back to the customer record', fu
             ->where('nota.1.no_telp', '0812222')
             ->where('nota.2.nama_pelanggan', 'Toko Telp')
             ->where('nota.2.no_telp', '0213333')
+        );
+});
+
+it('counts finished notes per task and unfinished notes of open tasks', function () {
+    $kurir = buatKurir();
+    $terbuka = buatPenagihan($kurir, ['no_transaksi' => 'TG2610-002', 'tgl' => '2026-10-05']);
+    $selesai = buatPenagihan($kurir, ['no_transaksi' => 'TG2610-001', 'tgl' => '2026-10-01', 'status' => 1]);
+
+    foreach (range(1, 6) as $urutan) {
+        tambahNota($terbuka, buatFaktur(), 1000, $urutan, tglSelesai: '2026-10-05');
+    }
+    foreach (range(7, 9) as $urutan) {
+        tambahNota($terbuka, buatFaktur(), 1000, $urutan, tglSelesai: '2026-10-07');
+    }
+    tambahNota($terbuka, buatFaktur(), 1000, 10);
+    tambahNota($terbuka, buatFaktur(), 1000, 11, rowStatus: 0, tglSelesai: '2026-10-05');
+    tambahNota($terbuka, buatFaktur(['row_status' => 0]), 1000, 12, tglSelesai: '2026-10-05');
+    tambahNota($terbuka, buatFaktur(['row_status' => 0]), 1000, 13);
+
+    tambahNota($selesai, buatFaktur(), 1000, 1, tglSelesai: '2026-10-02');
+    tambahNota($selesai, buatFaktur(), 1000, 2, tglSelesai: '2026-10-03');
+
+    $this->actingAs($kurir)
+        ->get(route('penagihan.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('tugas.0.id', $terbuka)
+            ->where('tugas.0.jumlah_nota', 10)
+            ->where('tugas.0.nota_selesai', 9)
+            ->where('tugas.1.id', $selesai)
+            ->where('tugas.1.jumlah_nota', 2)
+            ->where('tugas.1.nota_selesai', 2)
+            ->where('ringkasan.jumlah_dalam_penagihan', 1)
+            ->where('ringkasan.nota_belum_selesai', 1)
+        );
+});
+
+it('shows each note\'s finished status and date separately from paid status', function () {
+    $kurir = buatKurir();
+    $id = buatPenagihan($kurir);
+
+    $belumLunas = buatFaktur(['no_transaksi' => 'A-SELESAI', 'grand_total' => 500000]);
+    $lunasBelumSelesai = buatFaktur(['no_transaksi' => 'A-LUNAS', 'grand_total' => 100000]);
+    DB::table('pembayaran_faktur')->insert(['id_faktur' => $lunasBelumSelesai, 'nominal' => 100000, 'row_status' => 1]);
+
+    tambahNota($id, $lunasBelumSelesai, 100000, 2);
+    tambahNota($id, $belumLunas, 500000, 1, tglSelesai: '2026-10-07');
+
+    $this->actingAs($kurir)
+        ->get(route('penagihan.show', $id))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('nota.0.no_nota', 'A-SELESAI')
+            ->where('nota.0.selesai', true)
+            ->where('nota.0.tgl_selesai', '07 Okt 2026')
+            ->where('nota.0.lunas', false)
+            ->where('nota.1.no_nota', 'A-LUNAS')
+            ->where('nota.1.selesai', false)
+            ->where('nota.1.tgl_selesai', null)
+            ->where('nota.1.lunas', true)
         );
 });
