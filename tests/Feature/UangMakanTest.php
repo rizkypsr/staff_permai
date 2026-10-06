@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +19,7 @@ function buatSkemaUangMakan(): void
         $table->string('email')->default('');
         $table->string('password')->default('');
         $table->string('remember_token')->nullable();
+        $table->integer('id_pengguna_grup')->default(2);
         $table->boolean('status')->default(true);
         $table->boolean('row_status')->default(true);
         $table->timestamps();
@@ -48,9 +50,12 @@ function buatSkemaUangMakan(): void
     });
 }
 
-function buatStaffUangMakan(string $nama = 'Staff'): User
+/**
+ * @param  array<string, mixed>  $atribut
+ */
+function buatStaffUangMakan(string $nama = 'Staff', array $atribut = []): User
 {
-    return User::forceCreate(['nama' => $nama, 'username' => strtolower($nama)]);
+    return User::forceCreate(['nama' => $nama, 'username' => strtolower($nama), ...$atribut]);
 }
 
 function jadwalAmbil(string $berlakuMulai, string $hari): void
@@ -79,76 +84,111 @@ it('redirects guests to login', function () {
     $this->get('/uang-makan')->assertRedirect(route('login'));
 });
 
-it('pays a range that crosses months with a mid-range raise, pending days and duplicate attendance rows', function () {
-    $this->travelTo('2026-11-20 10:00:00');
-    $user = buatStaffUangMakan();
-    $lain = buatStaffUangMakan('Lain');
-
+it('lists every eligible active employee per pickup day with per-day rates and totals', function () {
+    Carbon::setTestNow('2026-11-20 10:00:00');
     jadwalAmbil('2026-10-01', '3');
-    aturUangMakan($user, '2026-07-01', 15000);
-    aturUangMakan($user, '2026-11-02', 25000);
-    aturUangMakan($lain, '2026-07-01', 99000);
 
-    absen($user, '2026-10-29', 1);
-    absen($user, '2026-10-30', 2);
-    absen($user, '2026-10-31', 0);
-    absen($user, '2026-10-31', 1);
-    absen($user, '2026-11-01', 1, rowStatus: 0);
-    absen($user, '2026-11-02', 1);
-    absen($user, '2026-11-03', 0);
-    absen($user, '2026-11-04', 3);
-    absen($user, '2026-11-04', 0);
-    absen($lain, '2026-11-02', 1);
+    $budi = buatStaffUangMakan('Budi');
+    aturUangMakan($budi, '2026-07-01', 15000);
+    aturUangMakan($budi, '2026-11-02', 25000);
+    absen($budi, '2026-10-29', 1);
+    absen($budi, '2026-10-30', 2);
+    absen($budi, '2026-10-31', 0);
+    absen($budi, '2026-10-31', 1);
+    absen($budi, '2026-11-01', 1, rowStatus: 0);
+    absen($budi, '2026-11-02', 1);
+    absen($budi, '2026-11-03', 0);
+    absen($budi, '2026-11-04', 3);
+    absen($budi, '2026-11-04', 0);
+    absen($budi, '2026-11-20', 0);
 
-    $this->actingAs($user)
+    $andi = buatStaffUangMakan('Andi');
+    aturUangMakan($andi, '2026-07-01', 20000);
+    absen($andi, '2026-10-29', 1);
+    absen($andi, '2026-11-04', 2);
+    absen($andi, '2026-11-05', 1);
+    absen($andi, '2026-11-19', 1);
+    absen($andi, '2026-11-20', 1);
+
+    $citra = buatStaffUangMakan('Citra');
+    aturUangMakan($citra, '2026-07-01', 10000);
+
+    $tidakTerdaftar = buatStaffUangMakan('Dodi');
+    absen($tidakTerdaftar, '2026-11-02', 1);
+
+    $tidakDapat = buatStaffUangMakan('Eka');
+    aturUangMakan($tidakDapat, '2026-07-01', 10000, aktif: false);
+    absen($tidakDapat, '2026-11-02', 1);
+
+    foreach ([
+        buatStaffUangMakan('Admin', ['id_pengguna_grup' => 1]),
+        buatStaffUangMakan('Fani', ['status' => 0]),
+        buatStaffUangMakan('Gina', ['row_status' => 0]),
+    ] as $bukanKaryawan) {
+        aturUangMakan($bukanKaryawan, '2026-07-01', 50000);
+        absen($bukanKaryawan, '2026-11-02', 1);
+    }
+
+    $this->actingAs($budi)
         ->get(route('uang-makan.index', ['periode' => '2026-11']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('UangMakan')
             ->where('periode', '2026-11')
             ->where('label', 'November 2026')
-            ->where('sebelum', '2026-10')
-            ->where('sesudah', '2026-12')
-            ->where('terdaftar', true)
             ->has('ambil', 4)
-            ->where('ambil.0.tgl', '2026-11-04')
             ->where('ambil.0.tgl_label', 'Rabu, 4 Nov')
             ->where('ambil.0.rentang_label', '29 Okt - 4 Nov')
-            ->where('ambil.0.jumlah_hari', 4)
-            ->where('ambil.0.total', 70000)
-            ->where('ambil.0.menunggu', 1)
             ->where('ambil.0.lewat', true)
-            ->where('ambil.0.rincian_nominal', [
+            ->has('ambil.0.baris', 3)
+            ->where('ambil.0.baris.0.nama', 'Andi')
+            ->where('ambil.0.baris.0.jumlah_hari', 2)
+            ->where('ambil.0.baris.0.total', 40000)
+            ->where('ambil.0.baris.0.nominal', [20000])
+            ->where('ambil.0.baris.0.hari_hadir', ['Kam 29', 'Rab 4'])
+            ->where('ambil.0.baris.1.nama', 'Budi')
+            ->where('ambil.0.baris.1.jumlah_hari', 4)
+            ->where('ambil.0.baris.1.total', 70000)
+            ->where('ambil.0.baris.1.menunggu', 1)
+            ->where('ambil.0.baris.1.nominal', [15000, 25000])
+            ->where('ambil.0.baris.1.rincian_nominal', [
                 ['nominal' => 15000, 'hari' => 3],
                 ['nominal' => 25000, 'hari' => 1],
             ])
-            ->where('ambil.0.hari', [
-                ['tgl' => '2026-10-29', 'label' => 'Kamis 29', 'kelas' => 'hadir'],
-                ['tgl' => '2026-10-30', 'label' => 'Jumat 30', 'kelas' => 'hadir'],
-                ['tgl' => '2026-10-31', 'label' => 'Sabtu 31', 'kelas' => 'hadir'],
-                ['tgl' => '2026-11-02', 'label' => 'Senin 2', 'kelas' => 'hadir'],
-                ['tgl' => '2026-11-03', 'label' => 'Selasa 3', 'kelas' => 'menunggu'],
-            ])
+            ->where('ambil.0.baris.2.nama', 'Citra')
+            ->where('ambil.0.baris.2.jumlah_hari', 0)
+            ->where('ambil.0.baris.2.total', 0)
+            ->where('ambil.0.baris.2.nominal', [10000])
+            ->where('ambil.0.total', 110000)
             ->where('ambil.1.rentang_label', '5 Nov - 11 Nov')
-            ->where('ambil.1.total', 0)
+            ->where('ambil.1.total', 20000)
+            ->where('ambil.2.total', 0)
             ->where('ambil.3.tgl', '2026-11-25')
             ->where('ambil.3.lewat', false)
-            ->where('total', 70000)
-            ->where('total_lewat', 70000)
-            ->where('jumlah_hari', 4)
-            ->where('menunggu', 1)
-            ->where('nominal_bulan', [
-                ['rentang_label' => '1 Nov - 1 Nov', 'nominal' => 15000],
-                ['rentang_label' => '2 Nov - 30 Nov', 'nominal' => 25000],
+            ->where('ambil.3.baris.0.total', 40000)
+            ->where('ambil.3.baris.1.menunggu', 1)
+            ->where('ambil.3.total', 40000)
+            ->where('total', 170000)
+            ->where('per_karyawan', [
+                ['id_pengguna' => $andi->id, 'nama' => 'Andi', 'jumlah_hari' => 5, 'total' => 100000],
+                ['id_pengguna' => $budi->id, 'nama' => 'Budi', 'jumlah_hari' => 4, 'total' => 70000],
+                ['id_pengguna' => $citra->id, 'nama' => 'Citra', 'jumlah_hari' => 0, 'total' => 0],
+            ])
+            ->where('berjalan', [
+                'tgl' => '2026-11-25',
+                'tgl_label' => 'Rabu, 25 Nov',
+                'jumlah_staff' => 3,
+                'jumlah_hari' => 2,
+                'total' => 40000,
+                'menunggu' => 1,
             ])
         );
 });
 
 it('starts the first pickup at the first schedule date, not before', function () {
-    $this->travelTo('2026-10-20 10:00:00');
-    $user = buatStaffUangMakan();
-
+    Carbon::setTestNow('2026-10-20 10:00:00');
     jadwalAmbil('2026-10-01', '3,6');
+    $user = buatStaffUangMakan();
     aturUangMakan($user, '2026-07-01', 20000);
 
     absen($user, '2026-09-30', 1);
@@ -161,122 +201,68 @@ it('starts the first pickup at the first schedule date, not before', function ()
         ->get(route('uang-makan.index', ['periode' => '2026-10']))
         ->assertInertia(fn (Assert $page) => $page
             ->has('ambil', 9)
-            ->where('ambil.0.tgl', '2026-10-03')
             ->where('ambil.0.rentang_label', '1 Okt - 3 Okt')
-            ->where('ambil.0.jumlah_hari', 3)
+            ->where('ambil.0.baris.0.jumlah_hari', 3)
             ->where('ambil.0.total', 60000)
-            ->where('ambil.1.tgl', '2026-10-07')
             ->where('ambil.1.rentang_label', '4 Okt - 7 Okt')
             ->where('ambil.1.total', 20000)
             ->where('total', 80000)
         );
 });
 
-it('has no pickup days before the meal allowance started', function () {
-    $this->travelTo('2026-10-20 10:00:00');
+it('shows no employee row for a pickup when nobody is eligible in its range', function () {
+    Carbon::setTestNow('2026-10-20 10:00:00');
+    jadwalAmbil('2026-10-01', '6');
     $user = buatStaffUangMakan();
+    aturUangMakan($user, '2026-10-05', 20000);
+    absen($user, '2026-10-02', 1);
+
+    $this->actingAs($user)
+        ->get(route('uang-makan.index', ['periode' => '2026-10']))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('ambil.0.tgl', '2026-10-03')
+            ->has('ambil.0.baris', 0)
+            ->where('ambil.0.total', 0)
+            ->has('ambil.1.baris', 1)
+        );
+});
+
+it('has no pickup days before the meal allowance started', function () {
+    Carbon::setTestNow('2026-10-20 10:00:00');
     jadwalAmbil('2026-10-01', '3,6');
+    $user = buatStaffUangMakan();
     aturUangMakan($user, '2026-07-01', 20000);
     absen($user, '2026-09-30', 1);
 
     $this->actingAs($user)
         ->get(route('uang-makan.index', ['periode' => '2026-09']))
         ->assertInertia(fn (Assert $page) => $page
-            ->where('terdaftar', true)
             ->has('ambil', 0)
             ->where('total', 0)
-        );
-});
-
-it('shows a message instead of an error when the user is not registered', function () {
-    $this->travelTo('2026-10-20 10:00:00');
-    $user = buatStaffUangMakan();
-    jadwalAmbil('2026-10-01', '3,6');
-    absen($user, '2026-10-01', 1);
-
-    $this->actingAs($user)
-        ->get(route('uang-makan.index'))
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('periode', '2026-10')
-            ->where('terdaftar', false)
-            ->where('total', 0)
-        );
-});
-
-it('counts attended days without allowance as not paid', function () {
-    $this->travelTo('2026-10-20 10:00:00');
-    $user = buatStaffUangMakan();
-    jadwalAmbil('2026-10-01', '6');
-    aturUangMakan($user, '2026-07-01', 20000);
-    aturUangMakan($user, '2026-10-02', 20000, aktif: false);
-
-    absen($user, '2026-10-01', 1);
-    absen($user, '2026-10-02', 1);
-
-    $this->actingAs($user)
-        ->get(route('uang-makan.index', ['periode' => '2026-10']))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('terdaftar', true)
-            ->where('ambil.0.jumlah_hari', 1)
-            ->where('ambil.0.total', 20000)
-            ->where('ambil.0.hari.1.kelas', 'tidak-dapat')
-        );
-});
-
-it('falls back to the current month for an invalid period', function () {
-    $this->travelTo('2026-10-20 10:00:00');
-
-    $this->actingAs(buatStaffUangMakan())
-        ->get(route('uang-makan.index', ['periode' => 'abc']))
-        ->assertInertia(fn (Assert $page) => $page->where('periode', '2026-10'));
-});
-
-it('shows the running total up to today, paid on the next pickup day', function () {
-    Carbon\Carbon::setTestNow('2026-10-09 10:00:00');
-    $user = buatStaffUangMakan();
-    jadwalAmbil('2026-10-01', '3,6');
-    aturUangMakan($user, '2026-07-01', 20000);
-
-    absen($user, '2026-10-07', 1);
-    absen($user, '2026-10-08', 1);
-    absen($user, '2026-10-08', 0);
-    absen($user, '2026-10-09', 0);
-
-    $this->actingAs($user)
-        ->get(route('uang-makan.index'))
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('periode', '2026-10')
-            ->where('berjalan', [
-                'tgl' => '2026-10-10',
-                'tgl_label' => 'Sabtu, 10 Okt',
-                'jumlah_hari' => 1,
-                'total' => 20000,
-                'menunggu' => 1,
-            ])
+            ->where('per_karyawan', [])
+            ->where('berjalan', null)
         );
 });
 
 it('hides the running total when today is a pickup day', function () {
-    Carbon\Carbon::setTestNow('2026-10-10 10:00:00');
-    $user = buatStaffUangMakan();
+    Carbon::setTestNow('2026-10-10 10:00:00');
     jadwalAmbil('2026-10-01', '3,6');
+    $user = buatStaffUangMakan();
     aturUangMakan($user, '2026-07-01', 20000);
     absen($user, '2026-10-08', 1);
 
     $this->actingAs($user)
         ->get(route('uang-makan.index'))
-        ->assertInertia(fn (Assert $page) => $page->where('berjalan', null));
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('periode', '2026-10')
+            ->where('berjalan', null)
+        );
 });
 
-it('hides the running total for another month', function () {
-    Carbon\Carbon::setTestNow('2026-10-09 10:00:00');
-    $user = buatStaffUangMakan();
-    jadwalAmbil('2026-10-01', '3,6');
-    aturUangMakan($user, '2026-07-01', 20000);
-    absen($user, '2026-10-08', 1);
+it('falls back to the current month for an invalid period', function () {
+    Carbon::setTestNow('2026-10-20 10:00:00');
 
-    $this->actingAs($user)
-        ->get(route('uang-makan.index', ['periode' => '2026-09']))
-        ->assertInertia(fn (Assert $page) => $page->where('berjalan', null));
+    $this->actingAs(buatStaffUangMakan())
+        ->get(route('uang-makan.index', ['periode' => 'abc']))
+        ->assertInertia(fn (Assert $page) => $page->where('periode', '2026-10'));
 });

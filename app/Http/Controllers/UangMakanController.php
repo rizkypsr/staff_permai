@@ -10,13 +10,16 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Rekap uang makan milik user yang login (hanya baca). Port dari
- * application/libraries/Uang_makan_lib.php di web admin; angkanya harus sama persis.
+ * Rekap uang makan SELURUH karyawan per hari ambil (hanya baca; pemilik memutuskan semua
+ * staff boleh melihatnya). Bentuknya mengikuti tanda terima admin (Uang_makan::cetak()),
+ * hitungannya port dari application/libraries/Uang_makan_lib.php; angkanya harus sama persis.
  *
  * - Dibayar pada hari ambil (riwayat uang_makan_hari, berlaku_mulai). Satu hari ambil
  *   membayar hari sesudah hari ambil sebelumnya sampai dan termasuk hari ambil itu.
  * - Hari dihitung kalau absensi MAX(status) per tanggal = 1 atau 2; status 0 = menunggu.
  * - Nominal dibaca PER HARI hadir dari riwayat uang_makan_staff yang berlaku pada hari itu.
+ * - Karyawan = Penggajian_lib::karyawan() (aktif, bukan grup 1); per hari ambil hanya yang
+ *   berhak di minimal satu hari rentangnya, walau 0 hari hadir.
  * - Tidak ada yang disimpan; semua diturunkan ulang dari absensi.
  */
 class UangMakanController extends Controller
@@ -25,102 +28,178 @@ class UangMakanController extends Controller
 
     private const NAMA_HARI = [1 => 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
+    private const HARI_PENDEK = [1 => 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
     /** @var Collection<int, object>|null */
     private ?Collection $riwayatHari = null;
 
-    /** @var Collection<int, object>|null */
-    private ?Collection $riwayatStaff = null;
+    /** @var array<int, list<object>> riwayat uang_makan_staff per id_pengguna, urut naik */
+    private array $riwayatStaff = [];
 
-    private int $userId;
+    /** @var array<int, array<string, int>> status absensi per id_pengguna per tanggal */
+    private array $absensi = [];
 
     public function index(Request $request): Response
     {
-        $this->userId = $request->user()->id;
-
         $periode = (string) $request->query('periode', '');
         if (! preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periode)) {
             $periode = now()->format('Y-m');
         }
 
         $awal = Carbon::createFromFormat('Y-m-d', $periode.'-01')->startOfDay();
-        $hitung = $this->hitung($periode);
+        $hariIni = now()->toDateString();
+
+        $tglAmbil = $this->tanggalAmbil($periode);
+        $rentangBerjalan = $periode === now()->format('Y-m') ? $this->rentangBerjalan($hariIni) : null;
+
+        $karyawan = $this->karyawan();
+        $this->muatData($karyawan->pluck('id')->all(), $tglAmbil, $rentangBerjalan, $hariIni);
+
+        $ambil = [];
+        $perKaryawan = [];
+        $dari = $tglAmbil === [] ? null : $this->dariAmbil($tglAmbil[0]);
+
+        foreach ($tglAmbil as $tgl) {
+            $baris = $this->barisKaryawan($karyawan, $dari, $tgl);
+
+            foreach ($baris as $b) {
+                $perKaryawan[$b['id_pengguna']] ??= ['id_pengguna' => $b['id_pengguna'], 'nama' => $b['nama'], 'jumlah_hari' => 0, 'total' => 0];
+                $perKaryawan[$b['id_pengguna']]['jumlah_hari'] += $b['jumlah_hari'];
+                $perKaryawan[$b['id_pengguna']]['total'] += $b['total'];
+            }
+
+            $ambil[] = [
+                'tgl' => $tgl,
+                'tgl_label' => $this->tglIndo($tgl),
+                'rentang_label' => $this->tglIndo($dari, false).' - '.$this->tglIndo($tgl, false),
+                'lewat' => $tgl <= $hariIni,
+                'hari_ini' => $tgl === $hariIni,
+                'baris' => $baris,
+                'total' => array_sum(array_column($baris, 'total')),
+            ];
+
+            $dari = $this->geser($tgl, 1);
+        }
+
+        $ringkasan = $karyawan
+            ->filter(fn (object $k): bool => isset($perKaryawan[(int) $k->id]))
+            ->map(fn (object $k): array => $perKaryawan[(int) $k->id])
+            ->values()
+            ->all();
 
         return Inertia::render('UangMakan', [
             'periode' => $periode,
             'label' => $awal->translatedFormat('F Y'),
             'sebelum' => $awal->copy()->subMonthNoOverflow()->format('Y-m'),
             'sesudah' => $awal->copy()->addMonthNoOverflow()->format('Y-m'),
-            'terdaftar' => $this->dapatDiBulan($periode),
-            'nominal_bulan' => $this->segmenNominal($periode),
-            'ambil' => $hitung['ambil'],
-            'total' => $hitung['total'],
-            'total_lewat' => $hitung['total_lewat'],
-            'jumlah_hari' => $hitung['jumlah_hari'],
-            'menunggu' => $hitung['menunggu'],
-            'berjalan' => $periode === now()->format('Y-m') ? $this->berjalan(now()->toDateString()) : null,
+            'ambil' => $ambil,
+            'per_karyawan' => $ringkasan,
+            'total' => array_sum(array_column($ambil, 'total')),
+            'berjalan' => $this->berjalan($karyawan, $rentangBerjalan, $hariIni),
         ]);
     }
 
     /**
-     * Uang makan satu bulan: hari ambil yang TANGGALNYA jatuh di bulan ini.
+     * Satu baris per karyawan yang berhak di minimal satu hari [dari, sampai], urut nama.
      *
-     * @return array{ambil: list<array<string, mixed>>, total: int, total_lewat: int, jumlah_hari: int, menunggu: int}
+     * @param  Collection<int, object>  $karyawan
+     * @return list<array<string, mixed>>
      */
-    private function hitung(string $periode): array
+    private function barisKaryawan(Collection $karyawan, string $dari, string $sampai): array
     {
-        $awal = $periode.'-01';
-        $akhir = Carbon::parse($awal)->endOfMonth()->toDateString();
-        $hariIni = now()->toDateString();
+        $baris = [];
 
-        $tglAmbil = [];
-        for ($d = $awal; $d <= $akhir; $d = $this->geser($d, 1)) {
-            if ($this->hariAmbil($d)) {
-                $tglAmbil[] = $d;
+        foreach ($karyawan as $k) {
+            $r = $this->rentang((int) $k->id, $dari, $sampai);
+            if (! $r['berhak']) {
+                continue;
+            }
+
+            unset($r['berhak']);
+            $baris[] = ['id_pengguna' => (int) $k->id, 'nama' => $k->nama, ...$r];
+        }
+
+        return $baris;
+    }
+
+    /**
+     * Uang makan satu karyawan untuk rentang [dari, sampai]. Port rentang() admin;
+     * `nominal` = nominal berbeda di hari-hari yang berhak (kolom "Per Hari" tanda terima).
+     *
+     * @return array{berhak: bool, jumlah_hari: int, total: int, menunggu: int, nominal: list<int>, rincian_nominal: list<array{nominal: int, hari: int}>, hari_hadir: list<string>}
+     */
+    private function rentang(int $idPengguna, string $dari, string $sampai): array
+    {
+        $status = $this->absensi[$idPengguna] ?? [];
+        $hasil = ['berhak' => false, 'jumlah_hari' => 0, 'total' => 0, 'menunggu' => 0, 'nominal' => [], 'rincian_nominal' => [], 'hari_hadir' => []];
+        $nominal = [];
+        $perNominal = [];
+
+        for ($d = $dari; $d <= $sampai; $d = $this->geser($d, 1)) {
+            $s = $status[$d] ?? null;
+            $atur = $this->staffPada($idPengguna, $d);
+            $hadir = $s === 1 || $s === 2;
+
+            if ($s === 0) {
+                $hasil['menunggu']++;
+            }
+
+            if ($atur['aktif']) {
+                $hasil['berhak'] = true;
+                $nominal[$atur['nominal']] = true;
+            }
+
+            if ($hadir && $atur['aktif']) {
+                $hasil['jumlah_hari']++;
+                $hasil['total'] += $atur['nominal'];
+                $perNominal[$atur['nominal']] = ($perNominal[$atur['nominal']] ?? 0) + 1;
+
+                $tanggal = Carbon::parse($d);
+                $hasil['hari_hadir'][] = self::HARI_PENDEK[$tanggal->dayOfWeekIso].' '.$tanggal->day;
             }
         }
 
-        $hasil = ['ambil' => [], 'total' => 0, 'total_lewat' => 0, 'jumlah_hari' => 0, 'menunggu' => 0];
-
-        if ($tglAmbil === []) {
-            return $hasil;
-        }
-
-        $dari = $this->dariAmbil($tglAmbil[0]);
-        $status = $this->absensi($dari, end($tglAmbil));
-
-        foreach ($tglAmbil as $tgl) {
-            $baris = $this->rentang($dari, $tgl, $status);
-            $lewat = $tgl <= $hariIni;
-
-            $hasil['ambil'][] = [
-                'tgl' => $tgl,
-                'tgl_label' => $this->tglIndo($tgl),
-                'rentang_label' => $this->tglIndo($dari, false).' - '.$this->tglIndo($tgl, false),
-                'lewat' => $lewat,
-                'hari_ini' => $tgl === $hariIni,
-                ...$baris,
-            ];
-            $hasil['total'] += $baris['total'];
-            $hasil['jumlah_hari'] += $baris['jumlah_hari'];
-            $hasil['menunggu'] += $baris['menunggu'];
-            if ($lewat) {
-                $hasil['total_lewat'] += $baris['total'];
-            }
-
-            $dari = $this->geser($tgl, 1);
+        $hasil['nominal'] = array_map('intval', array_keys($nominal));
+        foreach ($perNominal as $n => $hari) {
+            $hasil['rincian_nominal'][] = ['nominal' => (int) $n, 'hari' => $hari];
         }
 
         return $hasil;
     }
 
     /**
-     * Rentang yang sedang berjalan sampai $hariIni, dibayar pada hari ambil berikutnya.
-     * Null kalau jadwal kosong, kalau hari ini sendiri hari ambil (sudah ada di daftar),
-     * atau kalau rentangnya belum mulai. Port berjalan() + data_rincian() admin.
+     * Kotak "Terkumpul sampai hari ini" untuk semua karyawan: rentang yang sedang berjalan,
+     * dibayar pada hari ambil berikutnya. Port berjalan() + data_rincian() admin.
      *
-     * @return array{tgl: string, tgl_label: string, jumlah_hari: int, total: int, menunggu: int}|null
+     * @param  Collection<int, object>  $karyawan
+     * @param  array{dari: string, berikut: string}|null  $rentang
+     * @return array{tgl: string, tgl_label: string, jumlah_staff: int, jumlah_hari: int, total: int, menunggu: int}|null
      */
-    private function berjalan(string $hariIni): ?array
+    private function berjalan(Collection $karyawan, ?array $rentang, string $hariIni): ?array
+    {
+        if ($rentang === null) {
+            return null;
+        }
+
+        $baris = $this->barisKaryawan($karyawan, $rentang['dari'], $hariIni);
+
+        return [
+            'tgl' => $rentang['berikut'],
+            'tgl_label' => $this->tglIndo($rentang['berikut']),
+            'jumlah_staff' => count($baris),
+            'jumlah_hari' => array_sum(array_column($baris, 'jumlah_hari')),
+            'total' => array_sum(array_column($baris, 'total')),
+            'menunggu' => array_sum(array_column($baris, 'menunggu')),
+        ];
+    }
+
+    /**
+     * Null kalau jadwal kosong, kalau hari ini sendiri hari ambil (sudah ada di daftar),
+     * atau kalau rentangnya belum mulai.
+     *
+     * @return array{dari: string, berikut: string}|null
+     */
+    private function rentangBerjalan(string $hariIni): ?array
     {
         $berikut = $this->ambilBerikutnya($hariIni);
         if ($berikut === null || $berikut === $hariIni) {
@@ -128,95 +207,91 @@ class UangMakanController extends Controller
         }
 
         $dari = $this->dariAmbil($berikut);
-        if ($dari > $hariIni) {
-            return null;
-        }
 
-        $baris = $this->rentang($dari, $hariIni, $this->absensi($dari, $hariIni));
-
-        return [
-            'tgl' => $berikut,
-            'tgl_label' => $this->tglIndo($berikut),
-            'jumlah_hari' => $baris['jumlah_hari'],
-            'total' => $baris['total'],
-            'menunggu' => $baris['menunggu'],
-        ];
-    }
-
-    /** Hari ambil berikutnya mulai $tgl (termasuk $tgl), maksimal 31 hari ke depan. */
-    private function ambilBerikutnya(string $tgl): ?string
-    {
-        for ($i = 0; $i <= 31; $i++) {
-            $d = $this->geser($tgl, $i);
-            if ($this->hariAmbil($d)) {
-                return $d;
-            }
-        }
-
-        return null;
+        return $dari > $hariIni ? null : ['dari' => $dari, 'berikut' => $berikut];
     }
 
     /**
-     * Satu rentang [dari, sampai] dari peta status absensi.
+     * Karyawan seperti Penggajian_lib::karyawan(): aktif, belum dihapus, bukan grup Superadmin.
      *
-     * @param  array<string, int>  $status
-     * @return array{jumlah_hari: int, total: int, menunggu: int, rincian_nominal: list<array{nominal: int, hari: int}>, hari: list<array{tgl: string, label: string, kelas: string}>}
+     * @return Collection<int, object>
      */
-    private function rentang(string $dari, string $sampai, array $status): array
+    private function karyawan(): Collection
     {
-        $baris = ['jumlah_hari' => 0, 'total' => 0, 'menunggu' => 0, 'rincian_nominal' => [], 'hari' => []];
-        $perNominal = [];
-
-        for ($d = $dari; $d <= $sampai; $d = $this->geser($d, 1)) {
-            $s = $status[$d] ?? null;
-            $atur = $this->staffPada($d);
-            $hadir = $s === 1 || $s === 2;
-
-            if ($s === 0) {
-                $baris['menunggu']++;
-            }
-
-            if ($hadir && $atur['aktif']) {
-                $baris['jumlah_hari']++;
-                $baris['total'] += $atur['nominal'];
-                $perNominal[$atur['nominal']] = ($perNominal[$atur['nominal']] ?? 0) + 1;
-            }
-
-            if ($s !== null && $s !== 3) {
-                $tanggal = Carbon::parse($d);
-                $baris['hari'][] = [
-                    'tgl' => $d,
-                    'label' => self::NAMA_HARI[$tanggal->dayOfWeekIso].' '.$tanggal->day,
-                    'kelas' => $hadir ? ($atur['aktif'] ? 'hadir' : 'tidak-dapat') : 'menunggu',
-                ];
-            }
-        }
-
-        foreach ($perNominal as $nominal => $hari) {
-            $baris['rincian_nominal'][] = ['nominal' => (int) $nominal, 'hari' => $hari];
-        }
-
-        return $baris;
-    }
-
-    /**
-     * Status absensi per tanggal; tanggal ganda memakai MAX(status) seperti admin.
-     *
-     * @return array<string, int>
-     */
-    private function absensi(string $dari, string $sampai): array
-    {
-        return DB::table('absensi')
+        return DB::table('pengguna')
             ->where('row_status', 1)
-            ->where('id_pengguna', $this->userId)
-            ->whereBetween('tgl', [$dari, $sampai])
-            ->groupBy('tgl')
-            ->selectRaw('tgl, MAX(status) AS status')
+            ->where('status', 1)
+            ->where('id_pengguna_grup', '!=', 1)
+            ->orderBy('nama')
+            ->get(['id', 'nama']);
+    }
+
+    /**
+     * Muat riwayat uang_makan_staff dan absensi semua karyawan sekali untuk seluruh bulan.
+     *
+     * @param  list<int>  $ids
+     * @param  list<string>  $tglAmbil
+     * @param  array{dari: string, berikut: string}|null  $rentangBerjalan
+     */
+    private function muatData(array $ids, array $tglAmbil, ?array $rentangBerjalan, string $hariIni): void
+    {
+        if ($ids === []) {
+            return;
+        }
+
+        DB::table('uang_makan_staff')
+            ->where('row_status', 1)
+            ->whereIn('id_pengguna', $ids)
+            ->orderBy('berlaku_mulai')
+            ->orderBy('id')
+            ->get(['id_pengguna', 'berlaku_mulai', 'aktif', 'nominal'])
+            ->each(function (object $row): void {
+                $this->riwayatStaff[(int) $row->id_pengguna][] = (object) [
+                    'berlaku_mulai' => Carbon::parse($row->berlaku_mulai)->toDateString(),
+                    'aktif' => (int) $row->aktif,
+                    'nominal' => (int) $row->nominal,
+                ];
+            });
+
+        $rentang = [];
+        if ($tglAmbil !== []) {
+            $rentang[] = [$this->dariAmbil($tglAmbil[0]), end($tglAmbil)];
+        }
+        if ($rentangBerjalan !== null) {
+            $rentang[] = [$rentangBerjalan['dari'], $hariIni];
+        }
+        if ($rentang === []) {
+            return;
+        }
+
+        DB::table('absensi')
+            ->where('row_status', 1)
+            ->whereIn('id_pengguna', $ids)
+            ->whereBetween('tgl', [min(array_column($rentang, 0)), max(array_column($rentang, 1))])
+            ->groupBy('id_pengguna', 'tgl')
+            ->selectRaw('id_pengguna, tgl, MAX(status) AS status')
             ->get()
-            ->mapWithKeys(fn (object $row): array => [
-                Carbon::parse($row->tgl)->toDateString() => (int) $row->status,
-            ])
-            ->all();
+            ->each(function (object $row): void {
+                $this->absensi[(int) $row->id_pengguna][Carbon::parse($row->tgl)->toDateString()] = (int) $row->status;
+            });
+    }
+
+    /**
+     * @return list<string> hari ambil yang tanggalnya jatuh di bulan ini
+     */
+    private function tanggalAmbil(string $periode): array
+    {
+        $awal = $periode.'-01';
+        $akhir = Carbon::parse($awal)->endOfMonth()->toDateString();
+        $tgl = [];
+
+        for ($d = $awal; $d <= $akhir; $d = $this->geser($d, 1)) {
+            if ($this->hariAmbil($d)) {
+                $tgl[] = $d;
+            }
+        }
+
+        return $tgl;
     }
 
     /**
@@ -247,6 +322,19 @@ class UangMakanController extends Controller
     {
         for ($i = 1; $i <= 31; $i++) {
             $d = $this->geser($tgl, -$i);
+            if ($this->hariAmbil($d)) {
+                return $d;
+            }
+        }
+
+        return null;
+    }
+
+    /** Hari ambil berikutnya mulai $tgl (termasuk $tgl), maksimal 31 hari ke depan. */
+    private function ambilBerikutnya(string $tgl): ?string
+    {
+        for ($i = 0; $i <= 31; $i++) {
+            $d = $this->geser($tgl, $i);
             if ($this->hariAmbil($d)) {
                 return $d;
             }
@@ -294,65 +382,21 @@ class UangMakanController extends Controller
     }
 
     /**
-     * Pengaturan staff pada $tgl; tidak diatur = tidak dapat.
+     * Pengaturan satu karyawan pada $tgl; tidak diatur = tidak dapat.
      *
      * @return array{aktif: bool, nominal: int}
      */
-    private function staffPada(string $tgl): array
+    private function staffPada(int $idPengguna, string $tgl): array
     {
         $hasil = ['aktif' => false, 'nominal' => 0];
-        foreach ($this->riwayatStaff() as $row) {
+        foreach ($this->riwayatStaff[$idPengguna] ?? [] as $row) {
             if ($row->berlaku_mulai > $tgl) {
                 break;
             }
-            $hasil = ['aktif' => (int) $row->aktif === 1, 'nominal' => (int) $row->nominal];
+            $hasil = ['aktif' => $row->aktif === 1, 'nominal' => $row->nominal];
         }
 
         return $hasil;
-    }
-
-    /** Dapat uang makan di salah satu hari bulan ini. */
-    private function dapatDiBulan(string $periode): bool
-    {
-        $awal = $periode.'-01';
-        $akhir = Carbon::parse($awal)->endOfMonth()->toDateString();
-
-        if ($this->staffPada($awal)['aktif']) {
-            return true;
-        }
-
-        return $this->riwayatStaff()->contains(
-            fn (object $row): bool => (int) $row->aktif === 1 && $row->berlaku_mulai >= $awal && $row->berlaku_mulai <= $akhir
-        );
-    }
-
-    /**
-     * Nominal per hari sepanjang bulan, dipecah di tanggal perubahannya (null = tidak dapat).
-     *
-     * @return list<array{rentang_label: string, nominal: int|null}>
-     */
-    private function segmenNominal(string $periode): array
-    {
-        $awal = $periode.'-01';
-        $akhir = Carbon::parse($awal)->endOfMonth()->toDateString();
-        $segmen = [];
-
-        for ($d = $awal; $d <= $akhir; $d = $this->geser($d, 1)) {
-            $atur = $this->staffPada($d);
-            $nilai = $atur['aktif'] ? $atur['nominal'] : null;
-            $n = count($segmen);
-
-            if ($n > 0 && $segmen[$n - 1]['nominal'] === $nilai) {
-                $segmen[$n - 1]['sampai'] = $d;
-            } else {
-                $segmen[] = ['dari' => $d, 'sampai' => $d, 'nominal' => $nilai];
-            }
-        }
-
-        return array_map(fn (array $s): array => [
-            'rentang_label' => $this->tglIndo($s['dari'], false).' - '.$this->tglIndo($s['sampai'], false),
-            'nominal' => $s['nominal'],
-        ], $segmen);
     }
 
     /**
@@ -368,24 +412,6 @@ class UangMakanController extends Controller
             ->map(fn (object $row): object => (object) [
                 'berlaku_mulai' => Carbon::parse($row->berlaku_mulai)->toDateString(),
                 'hari' => (string) $row->hari,
-            ]);
-    }
-
-    /**
-     * @return Collection<int, object>
-     */
-    private function riwayatStaff(): Collection
-    {
-        return $this->riwayatStaff ??= DB::table('uang_makan_staff')
-            ->where('row_status', 1)
-            ->where('id_pengguna', $this->userId)
-            ->orderBy('berlaku_mulai')
-            ->orderBy('id')
-            ->get(['berlaku_mulai', 'aktif', 'nominal'])
-            ->map(fn (object $row): object => (object) [
-                'berlaku_mulai' => Carbon::parse($row->berlaku_mulai)->toDateString(),
-                'aktif' => (int) $row->aktif,
-                'nominal' => (int) $row->nominal,
             ]);
     }
 

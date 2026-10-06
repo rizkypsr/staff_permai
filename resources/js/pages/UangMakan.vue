@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { Button, Empty, NavBar, Tag } from 'vant';
-import { computed } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { home } from '@/routes';
 import { index } from '@/routes/uang-makan';
 
-interface HariChip {
-    tgl: string;
-    label: string;
-    kelas: 'hadir' | 'menunggu' | 'tidak-dapat';
+interface Baris {
+    id_pengguna: number;
+    nama: string;
+    jumlah_hari: number;
+    total: number;
+    menunggu: number;
+    nominal: number[];
+    rincian_nominal: { nominal: number; hari: number }[];
+    hari_hadir: string[];
 }
 
 interface Ambil {
@@ -18,48 +22,46 @@ interface Ambil {
     rentang_label: string;
     lewat: boolean;
     hari_ini: boolean;
-    jumlah_hari: number;
+    baris: Baris[];
     total: number;
-    menunggu: number;
-    rincian_nominal: { nominal: number; hari: number }[];
-    hari: HariChip[];
 }
 
-const props = defineProps<{
+defineProps<{
     periode: string;
     label: string;
     sebelum: string;
     sesudah: string;
-    terdaftar: boolean;
-    nominal_bulan: { rentang_label: string; nominal: number | null }[];
     ambil: Ambil[];
+    per_karyawan: {
+        id_pengguna: number;
+        nama: string;
+        jumlah_hari: number;
+        total: number;
+    }[];
     total: number;
-    total_lewat: number;
-    jumlah_hari: number;
-    menunggu: number;
     berjalan: {
         tgl: string;
         tgl_label: string;
+        jumlah_staff: number;
         jumlah_hari: number;
         total: number;
         menunggu: number;
     } | null;
 }>();
 
-const rupiah = (nilai: number): string => `Rp ${nilai.toLocaleString('id-ID')}`;
+const angka = (nilai: number): string => nilai.toLocaleString('id-ID');
+const rupiah = (nilai: number): string => `Rp ${angka(nilai)}`;
 
-const nominalTerakhir = computed(
-    () => props.nominal_bulan[props.nominal_bulan.length - 1]?.nominal ?? null,
-);
+/** "3 x 12.000, 1 x 15.000" kalau nominal berubah, selain itu nominal per hari. */
+const teksNominal = (baris: Baris): string =>
+    baris.rincian_nominal.length > 1
+        ? baris.rincian_nominal
+              .map((r) => `${r.hari} x ${angka(r.nominal)}`)
+              .join(', ')
+        : baris.nominal.map(angka).join(' / ');
 
 const pindahBulan = (periode: string) => {
     router.visit(index({ query: { periode } }).url, { preserveScroll: true });
-};
-
-const kelasChip: Record<HariChip['kelas'], string> = {
-    hadir: 'border-green-300 bg-green-50 text-green-700',
-    menunggu: 'border-amber-300 bg-amber-50 text-amber-700',
-    'tidak-dapat': 'border-gray-200 bg-gray-50 text-gray-400 line-through',
 };
 </script>
 
@@ -92,56 +94,18 @@ const kelasChip: Record<HariChip['kelas'], string> = {
             </div>
 
             <div class="flex flex-col gap-4 p-4 text-sm">
-                <Empty
-                    v-if="!terdaftar"
-                    :description="`Anda tidak terdaftar menerima uang makan di ${label}.`"
-                />
-
-                <template v-else>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="rounded-lg bg-white p-3 shadow-sm">
-                            <div class="text-xs text-gray-500">
-                                Per hari hadir
-                            </div>
-                            <div
-                                class="mt-1 text-lg font-semibold text-gray-900"
-                            >
-                                {{
-                                    nominalTerakhir !== null
-                                        ? rupiah(nominalTerakhir)
-                                        : '-'
-                                }}
-                            </div>
-                            <template v-if="nominal_bulan.length > 1">
-                                <div
-                                    v-for="segmen in nominal_bulan"
-                                    :key="segmen.rentang_label"
-                                    class="text-xs text-gray-500"
-                                >
-                                    {{ segmen.rentang_label }}:
-                                    {{
-                                        segmen.nominal !== null
-                                            ? rupiah(segmen.nominal)
-                                            : 'tidak dapat'
-                                    }}
-                                </div>
-                            </template>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-lg bg-white p-3 shadow-sm">
+                        <div class="text-xs text-gray-500">
+                            Total {{ label }}
                         </div>
-                        <div class="rounded-lg bg-white p-3 shadow-sm">
-                            <div class="text-xs text-gray-500">
-                                Total {{ label }}
-                            </div>
-                            <div
-                                class="mt-1 text-lg font-semibold text-amber-600"
-                            >
-                                {{ rupiah(total) }}
-                            </div>
-                            <div class="text-xs text-gray-500">
-                                {{ jumlah_hari }} hari hadir
-                            </div>
+                        <div class="mt-1 text-lg font-semibold text-amber-600">
+                            {{ rupiah(total) }}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            {{ ambil.length }} hari ambil
                         </div>
                     </div>
-
                     <div
                         v-if="berjalan"
                         class="rounded-lg border border-blue-200 bg-blue-50 p-3"
@@ -153,136 +117,136 @@ const kelasChip: Record<HariChip['kelas'], string> = {
                             {{ rupiah(berjalan.total) }}
                         </div>
                         <div class="text-xs text-gray-600">
-                            {{ berjalan.jumlah_hari }} hari, diambil
+                            {{ berjalan.jumlah_staff }} staff, diambil
                             {{ berjalan.tgl_label }}
                         </div>
-                        <div
-                            v-if="berjalan.menunggu > 0"
-                            class="mt-1 text-xs text-amber-700"
+                    </div>
+                </div>
+
+                <Empty
+                    v-if="ambil.length === 0"
+                    description="Tidak ada hari ambil di bulan ini"
+                />
+
+                <section
+                    v-for="item in ambil"
+                    :key="item.tgl"
+                    class="overflow-hidden rounded-lg bg-white shadow-sm"
+                >
+                    <div
+                        class="flex items-start justify-between gap-2 border-b border-gray-100 p-4"
+                        :class="{ 'bg-gray-50': !item.lewat }"
+                    >
+                        <div class="min-w-0">
+                            <div class="font-semibold text-gray-900">
+                                {{ item.tgl_label }}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                untuk {{ item.rentang_label }}
+                            </div>
+                        </div>
+                        <Tag v-if="item.hari_ini" type="primary" size="medium">
+                            Hari ini
+                        </Tag>
+                        <Tag
+                            v-else-if="!item.lewat"
+                            type="default"
+                            size="medium"
                         >
-                            {{ berjalan.menunggu }} hari masih menunggu approve,
-                            belum dihitung.
+                            Belum tiba
+                        </Tag>
+                    </div>
+
+                    <div
+                        v-if="item.baris.length === 0"
+                        class="p-4 text-center text-gray-500"
+                    >
+                        Tidak ada staff yang dapat uang makan di hari ambil ini.
+                    </div>
+
+                    <div
+                        v-for="baris in item.baris"
+                        :key="baris.id_pengguna"
+                        class="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0"
+                    >
+                        <div class="min-w-0">
+                            <div class="font-medium text-gray-900">
+                                {{ baris.nama }}
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                {{ baris.jumlah_hari }} hari ·
+                                {{ teksNominal(baris) }}
+                            </div>
+                            <div
+                                v-if="baris.hari_hadir.length > 0"
+                                class="text-xs text-gray-400"
+                            >
+                                {{ baris.hari_hadir.join(', ') }}
+                            </div>
+                            <div
+                                v-if="baris.menunggu > 0"
+                                class="text-xs text-amber-700"
+                            >
+                                {{ baris.menunggu }} hari menunggu approve
+                            </div>
+                        </div>
+                        <div
+                            class="shrink-0 font-semibold"
+                            :class="
+                                baris.total > 0
+                                    ? 'text-gray-900'
+                                    : 'text-gray-400'
+                            "
+                        >
+                            {{ rupiah(baris.total) }}
                         </div>
                     </div>
 
-                    <div>
-                        <h3 class="mb-2 px-1 font-semibold text-gray-700">
-                            Hari Ambil
-                        </h3>
-
-                        <div
-                            v-if="ambil.length > 0"
-                            class="flex flex-col gap-3"
+                    <div
+                        class="flex justify-between bg-gray-50 px-4 py-3 font-semibold"
+                    >
+                        <span class="text-gray-700"
+                            >Total {{ item.baris.length }} staff</span
                         >
-                            <div
-                                v-for="item in ambil"
-                                :key="item.tgl"
-                                class="rounded-lg bg-white p-4 shadow-sm"
-                                :class="{ 'opacity-70': !item.lewat }"
-                            >
-                                <div
-                                    class="flex items-start justify-between gap-2"
-                                >
-                                    <div class="min-w-0">
-                                        <div
-                                            class="font-semibold text-gray-900"
-                                        >
-                                            {{ item.tgl_label }}
-                                        </div>
-                                        <div class="text-xs text-gray-500">
-                                            untuk {{ item.rentang_label }}
-                                        </div>
-                                    </div>
-                                    <Tag
-                                        v-if="item.hari_ini"
-                                        type="primary"
-                                        size="medium"
-                                    >
-                                        Hari ini
-                                    </Tag>
-                                    <Tag
-                                        v-else-if="!item.lewat"
-                                        type="default"
-                                        size="medium"
-                                    >
-                                        Belum tiba
-                                    </Tag>
-                                </div>
-
-                                <div
-                                    v-if="item.hari.length > 0"
-                                    class="mt-2 flex flex-wrap gap-1"
-                                >
-                                    <span
-                                        v-for="hari in item.hari"
-                                        :key="hari.tgl"
-                                        class="rounded-full border px-2 py-0.5 text-xs"
-                                        :class="kelasChip[hari.kelas]"
-                                    >
-                                        {{ hari.label }}
-                                    </span>
-                                </div>
-
-                                <p
-                                    v-if="item.menunggu > 0"
-                                    class="mt-2 text-xs text-amber-700"
-                                >
-                                    {{ item.menunggu }} hari masih menunggu
-                                    approve, belum dihitung.
-                                </p>
-
-                                <div
-                                    class="mt-3 flex items-end justify-between gap-2 border-t border-gray-100 pt-3"
-                                >
-                                    <div class="text-xs text-gray-500">
-                                        <div>
-                                            {{ item.jumlah_hari }} hari hadir
-                                        </div>
-                                        <div
-                                            v-for="r in item.rincian_nominal"
-                                            :key="r.nominal"
-                                        >
-                                            {{ r.hari }} x
-                                            {{ rupiah(r.nominal) }}
-                                        </div>
-                                    </div>
-                                    <div
-                                        class="text-base font-semibold text-gray-900"
-                                    >
-                                        {{ rupiah(item.total) }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                class="flex items-center justify-between rounded-lg bg-white p-4 font-semibold shadow-sm"
-                            >
-                                <span class="text-gray-700"
-                                    >Total ({{ jumlah_hari }} hari)</span
-                                >
-                                <span class="text-base text-amber-600">{{
-                                    rupiah(total)
-                                }}</span>
-                            </div>
-                        </div>
-
-                        <Empty
-                            v-else
-                            description="Tidak ada hari ambil di bulan ini"
-                        />
+                        <span class="text-gray-900">{{
+                            rupiah(item.total)
+                        }}</span>
                     </div>
+                </section>
 
-                    <p class="px-1 text-xs text-gray-500">
-                        Dihitung otomatis dari absensi: setiap hari ambil
-                        membayar hari hadir (masuk atau telat) sejak hari ambil
-                        sebelumnya. Hari yang masih menunggu approve belum
-                        dihitung.
-                        <span class="text-green-700">Hijau</span> dibayar,
-                        <span class="text-amber-700">kuning</span> menunggu
-                        approve, <span class="line-through">dicoret</span> hadir
-                        tapi tidak dapat uang makan.
-                    </p>
-                </template>
+                <section
+                    v-if="per_karyawan.length > 0"
+                    class="rounded-lg bg-white p-4 shadow-sm"
+                >
+                    <h3 class="mb-2 font-semibold text-gray-700">
+                        Per staff, {{ label }}
+                    </h3>
+                    <div
+                        v-for="k in per_karyawan"
+                        :key="k.id_pengguna"
+                        class="flex justify-between gap-3 py-1"
+                    >
+                        <span class="text-gray-700"
+                            >{{ k.nama }}
+                            <span class="text-xs text-gray-400"
+                                >({{ k.jumlah_hari }} hari)</span
+                            ></span
+                        >
+                        <span class="text-gray-900">{{ rupiah(k.total) }}</span>
+                    </div>
+                    <div
+                        class="mt-2 flex justify-between border-t border-gray-100 pt-2 font-semibold"
+                    >
+                        <span>Total</span>
+                        <span class="text-amber-600">{{ rupiah(total) }}</span>
+                    </div>
+                </section>
+
+                <p class="px-1 text-xs text-gray-500">
+                    Dihitung otomatis dari absensi: setiap hari ambil membayar
+                    hari hadir (masuk atau telat) sejak hari ambil sebelumnya.
+                    Hari yang masih menunggu approve belum dihitung.
+                </p>
             </div>
         </div>
     </AppLayout>
