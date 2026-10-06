@@ -15,7 +15,9 @@ import {
 } from 'vant';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { index as gajiIndex } from '@/routes/gaji';
 import { index as penagihanIndex } from '@/routes/penagihan';
+import { index as uangMakanIndex } from '@/routes/uang-makan';
 import { index as utangIndex } from '@/routes/utang';
 
 const props = defineProps({
@@ -71,6 +73,8 @@ const menuActions = [
     { text: 'Rekap Absensi', icon: 'calendar-o' },
     { text: 'Utang', icon: 'balance-o' },
     { text: 'Penagihan', icon: 'bill-o' },
+    { text: 'Slip Gaji', icon: 'balance-list-o' },
+    { text: 'Uang Makan', icon: 'gift-card-o' },
     { text: 'Pengaturan', icon: 'setting-o' },
     { text: 'Logout', icon: 'sign' },
 ];
@@ -142,6 +146,10 @@ const handleMenuClick = (action) => {
         router.visit(utangIndex().url);
     } else if (action.text === 'Penagihan') {
         router.visit(penagihanIndex().url);
+    } else if (action.text === 'Slip Gaji') {
+        router.visit(gajiIndex().url);
+    } else if (action.text === 'Uang Makan') {
+        router.visit(uangMakanIndex().url);
     } else if (action.text === 'Pengaturan') {
         router.visit('/settings');
     } else if (action.text === 'Logout') {

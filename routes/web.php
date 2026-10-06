@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AbsensiController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\GajiController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PenagihanController;
 use App\Http\Controllers\PengembalianController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\PengirimanController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekapAbsensiController;
 use App\Http\Controllers\StokController;
+use App\Http\Controllers\UangMakanController;
 use App\Http\Controllers\UtangPengajuanController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +40,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/utang/{id}', [UtangPengajuanController::class, 'destroy'])->whereNumber('id')->name('utang.destroy');
     Route::get('/penagihan', [PenagihanController::class, 'index'])->name('penagihan.index');
     Route::get('/penagihan/{id}', [PenagihanController::class, 'show'])->whereNumber('id')->name('penagihan.show');
+    Route::get('/gaji', [GajiController::class, 'index'])->name('gaji.index');
+    Route::get('/gaji/{periode}', [GajiController::class, 'show'])->where('periode', '\d{4}-(0[1-9]|1[0-2])')->name('gaji.show');
+    Route::get('/uang-makan', [UangMakanController::class, 'index'])->name('uang-makan.index');
     Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
     Route::inertia('/settings', 'Settings')->name('settings');
 });
